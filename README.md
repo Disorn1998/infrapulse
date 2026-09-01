@@ -9,7 +9,8 @@
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Live Demo](https://img.shields.io/badge/Live_Demo-Cloudflare_Tunnel-f38020.svg?style=for-the-badge&logo=cloudflare&logoColor=white)](https://membership-guarantee-forgotten-div.trycloudflare.com)
 
-**🌐 Live Public Demo URL:** [https://membership-guarantee-forgotten-div.trycloudflare.com](https://membership-guarantee-forgotten-div.trycloudflare.com)
+**🌐 Live Public Demo URL:** [https://membership-guarantee-forgotten-div.trycloudflare.com](https://membership-guarantee-forgotten-div.trycloudflare.com)  
+**📖 Comprehensive User Manuals:** [🇹🇭 คู่มือการใช้งานภาษาไทย (Thai)](docs/USER_MANUAL_TH.md) | [🇬🇧 User & Operations Manual (English)](docs/USER_MANUAL_EN.md)
 
 ![InfraPulse DCIM Operations Dashboard](docs/screenshots/dashboard_hero.png)
 
