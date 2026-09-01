@@ -1,0 +1,21 @@
+[Unit]
+Description=InfraPulse Infrastructure Monitoring Agent
+After=network.target network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/infrapulse/agent
+ExecStart=/opt/infrapulse/agent/venv/bin/python monitor_agent.py --config config.json
+Restart=on-failure
+RestartSec=10
+KillMode=process
+TimeoutStopSec=15
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

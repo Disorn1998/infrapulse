@@ -1,0 +1,214 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { Header } from './components/Header';
+import { FacilityKpi } from './components/FacilityKpi';
+import { HostCard } from './components/HostCard';
+import { MetricCharts } from './components/MetricCharts';
+import { CapacityView } from './components/CapacityView';
+import { EmptyState } from './components/EmptyState';
+import { Host, Metric, FacilityOverview } from './types/api';
+import { fetchHosts, fetchHostMetrics, fetchFacilityOverview } from './services/api';
+import { Server, AlertCircle, Activity, Zap } from 'lucide-react';
+
+const REFRESH_INTERVAL_SECONDS = 15;
+
+export const App: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<'telemetry' | 'capacity'>('telemetry');
+  const [hosts, setHosts] = useState<Host[]>([]);
+  const [selectedHostId, setSelectedHostId] = useState<string | null>(null);
+  const [metrics, setMetrics] = useState<Metric[]>([]);
+  const [facility, setFacility] = useState<FacilityOverview | null>(null);
+  const [timeRange, setTimeRange] = useState<string>('1h');
+  const [countdown, setCountdown] = useState<number>(REFRESH_INTERVAL_SECONDS);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [latestMetricsMap, setLatestMetricsMap] = useState<Record<string, Metric>>({});
+
+  const loadData = useCallback(async (background = false) => {
+    if (!background) setIsLoading(true);
+    setIsRefreshing(true);
+    setError(null);
+
+    try {
+      const [fetchedHosts, fetchedFacility] = await Promise.all([
+        fetchHosts(),
+        fetchFacilityOverview().catch(() => null),
+      ]);
+
+      setHosts(fetchedHosts);
+      setFacility(fetchedFacility);
+
+      if (fetchedHosts.length > 0) {
+        setSelectedHostId((prev) => (prev && fetchedHosts.some((h) => h.id === prev) ? prev : fetchedHosts[0].id));
+      }
+    } catch (err: any) {
+      console.error('Error fetching dashboard telemetry:', err);
+      setError(err.message || 'Failed to connect to InfraPulse backend.');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+      setCountdown(REFRESH_INTERVAL_SECONDS);
+    }
+  }, []);
+
+  const loadSelectedMetrics = useCallback(async (hostId: string, range: string) => {
+    try {
+      const hostMetrics = await fetchHostMetrics(hostId, range);
+      setMetrics(hostMetrics);
+
+      if (hostMetrics.length > 0) {
+        const last = hostMetrics[hostMetrics.length - 1];
+        setLatestMetricsMap((prev) => ({ ...prev, [hostId]: last }));
+      }
+    } catch (err) {
+      console.error(`Failed to load metrics for ${hostId}:`, err);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  useEffect(() => {
+    if (selectedHostId) {
+      loadSelectedMetrics(selectedHostId, timeRange);
+    }
+  }, [selectedHostId, timeRange, loadSelectedMetrics]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          loadData(true);
+          if (selectedHostId) {
+            loadSelectedMetrics(selectedHostId, timeRange);
+          }
+          return REFRESH_INTERVAL_SECONDS;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [loadData, loadSelectedMetrics, selectedHostId, timeRange]);
+
+  const handleManualRefresh = () => {
+    loadData(false);
+    if (selectedHostId) {
+      loadSelectedMetrics(selectedHostId, timeRange);
+    }
+  };
+
+  const selectedHost = hosts.find((h) => h.id === selectedHostId);
+
+  return (
+    <div className="min-h-screen bg-background text-slate-100 flex flex-col">
+      <Header
+        facility={facility}
+        countdown={countdown}
+        isRefreshing={isRefreshing}
+        onManualRefresh={handleManualRefresh}
+      />
+
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+        {error && (
+          <div className="bg-rose-950/60 border border-rose-500/40 rounded-xl p-4 flex items-center gap-3 text-rose-300 font-mono text-xs shadow-lg">
+            <AlertCircle className="w-5 h-5 text-rose-400 flex-shrink-0" />
+            <div>
+              <strong className="font-bold">Backend Connection Issue: </strong>
+              <span>{error}</span>
+            </div>
+          </div>
+        )}
+
+        <FacilityKpi facility={facility} />
+
+        {/* Navigation Tabs */}
+        <div className="flex items-center gap-2 border-b border-surface-border pb-2">
+          <button
+            onClick={() => setActiveTab('telemetry')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all ${
+              activeTab === 'telemetry'
+                ? 'bg-cyan-500 text-slate-950 shadow-lg shadow-cyan-500/20'
+                : 'bg-surface-card hover:bg-slate-800 text-slate-400 border border-surface-border'
+            }`}
+          >
+            <Activity className="w-4 h-4" />
+            <span>Real-Time Telemetry</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('capacity')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all ${
+              activeTab === 'capacity'
+                ? 'bg-cyan-500 text-slate-950 shadow-lg shadow-cyan-500/20'
+                : 'bg-surface-card hover:bg-slate-800 text-slate-400 border border-surface-border'
+            }`}
+          >
+            <Zap className="w-4 h-4" />
+            <span>Capacity & Power Intelligence</span>
+          </button>
+        </div>
+
+        {/* Tab 1: Real-Time Telemetry */}
+        {activeTab === 'telemetry' && (
+          hosts.length === 0 && !isLoading ? (
+            <EmptyState />
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              <div className="lg:col-span-4 space-y-3">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="text-xs font-bold font-mono text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Server className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Monitored Nodes ({hosts.length})</span>
+                  </h3>
+                  <span className="text-[11px] font-mono text-slate-500">
+                    {hosts.filter((h) => h.is_online).length} online
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {hosts.map((h) => (
+                    <HostCard
+                      key={h.id}
+                      host={h}
+                      isSelected={h.id === selectedHostId}
+                      latestMetric={latestMetricsMap[h.id]}
+                      onSelect={(selected) => setSelectedHostId(selected.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="lg:col-span-8">
+                {selectedHost ? (
+                  <MetricCharts
+                    selectedHost={selectedHost}
+                    metrics={metrics}
+                    timeRange={timeRange}
+                    onRangeChange={(r) => setTimeRange(r)}
+                    isLoading={isLoading}
+                  />
+                ) : (
+                  <div className="bg-surface-card border border-surface-border rounded-xl p-12 text-center text-slate-400 font-mono text-sm">
+                    Select a node from the inventory to view real-time telemetry
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        )}
+
+        {/* Tab 2: Capacity & Power Intelligence */}
+        {activeTab === 'capacity' && (
+          <CapacityView hosts={hosts} onRefresh={handleManualRefresh} />
+        )}
+      </main>
+
+      <footer className="border-t border-surface-border py-4 px-6 text-center text-xs font-mono text-slate-500">
+        InfraPulse DCIM & Telemetry Platform • Built for Edge Data Centers & Server Rooms
+      </footer>
+    </div>
+  );
+};

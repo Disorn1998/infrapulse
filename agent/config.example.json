@@ -1,0 +1,9 @@
+{
+  "backend_url": "http://localhost:8000/api/v1/metrics",
+  "agent_token": "infrapulse_secret_token_change_in_production",
+  "collect_interval_seconds": 30,
+  "buffer_db_path": "agent_buffer.db",
+  "max_buffer_records": 10000,
+  "batch_flush_size": 100,
+  "log_level": "INFO"
+}
