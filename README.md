@@ -190,6 +190,14 @@ flowchart LR
 * **Hysteresis State Machine & Cooldown (30 Mins):** Transitions through `OK` $\rightarrow$ `FIRING` $\rightarrow$ `RESOLVED` with 30-minute cooldown suppression to eliminate alert fatigue.
 * **Immutable Audit Trail:** All alert events are permanently logged in PostgreSQL (`alert_history` table) for incident post-mortems.
 
+### 6. 🤖 AI Infrastructure Copilot & DCIM Health Scoring
+* **Continuous Health Index (0-100):** Real-time DCIM Health scoring evaluating thermodynamic efficiency, electrical symmetry, and node availability.
+* **Phase Imbalance Diagnostics:** Alerts when Feed A and Feed B loads diverge significantly (> 35% delta), suggesting optimal node reassignment.
+* **Actionable Engineering Recommendations:** Category-tagged recommendations (Energy Optimization, Electrical Safety, Capacity Planning, Hardware Health) with estimated ROI/efficiency gains.
+
+### 7. 🎮 1-Click Interactive Demo Sandbox Toolbar
+* **Zero-CLI Web Testing:** Test the full platform directly on the web without opening a terminal via 1-click buttons (`🚀 Simulate Cluster`, `⚡ Spike Load`, `🔌 Feed A Outage`). Ideal for recruiters and mobile viewers visiting the Live Demo URL!
+
 ---
 
 ## 🛠️ Tech Stack & Engineering Choices
