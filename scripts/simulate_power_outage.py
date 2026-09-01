@@ -6,11 +6,12 @@ Simulates a total electrical outage on Feed A (PDU-A1) to verify automatic N+1 f
 safety headroom, breaker derating compliance, and alert engine notifications.
 """
 
+import os
 import time
 import requests
 
-API_URL = "http://localhost:8000/api/v1"
-TOKEN = "infrapulse_secret_token_change_in_production"
+API_URL = os.getenv("API_URL", "http://localhost:8000/api/v1")
+TOKEN = os.getenv("AGENT_SECRET_TOKEN", "infrapulse_secret_token_change_in_production")
 HEADERS = {"X-Agent-Token": TOKEN, "Content-Type": "application/json"}
 
 

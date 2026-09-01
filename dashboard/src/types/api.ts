@@ -134,3 +134,39 @@ export interface CapacityForecast {
   historical_trend: TrendPoint[];
   recommendation: string;
 }
+
+export interface AiInsightCard {
+  id: string;
+  category: 'ENERGY_OPTIMIZATION' | 'ELECTRICAL_SAFETY' | 'CAPACITY_PLANNING' | 'HARDWARE_HEALTH' | string;
+  severity: 'CRITICAL' | 'WARNING' | 'OPTIMIZATION' | 'INFO' | string;
+  title: string;
+  summary: string;
+  impact: string;
+  recommended_action: string;
+  estimated_savings_or_benefit?: string | null;
+  action_type?: string | null;
+  created_at: string;
+}
+
+export interface AiAdvisorResponse {
+  datacenter_health_score: number;
+  health_status: 'OPTIMAL' | 'GOOD' | 'NEEDS_ATTENTION' | 'CRITICAL' | string;
+  executive_summary: string;
+  key_metrics_summary: {
+    total_nodes: number;
+    online_nodes: number;
+    dynamic_pue: number;
+    it_power_watts: number;
+    facility_power_watts: number;
+    n_plus_one_headroom_watts: number;
+    days_to_capacity_exhaustion?: number | null;
+  };
+  insights: AiInsightCard[];
+  analyzed_at: string;
+}
+
+export interface SimulationResult {
+  status: string;
+  action: string;
+  message: string;
+}

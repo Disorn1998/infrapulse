@@ -9,12 +9,13 @@ Instantly registers a realistic 4-server production datacenter cluster:
 4. storage-nas-01   (ZFS Storage Vault)                   -> Feed B (PDU-B1) [Rack U9-U12]
 """
 
+import os
 import sys
 import time
 import requests
 
-API_URL = "http://localhost:8000/api/v1"
-TOKEN = "infrapulse_secret_token_change_in_production"
+API_URL = os.getenv("API_URL", "http://localhost:8000/api/v1")
+TOKEN = os.getenv("AGENT_SECRET_TOKEN", "infrapulse_secret_token_change_in_production")
 HEADERS = {"X-Agent-Token": TOKEN, "Content-Type": "application/json"}
 
 NODES = [

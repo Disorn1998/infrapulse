@@ -6,11 +6,13 @@ Demonstrates DCIM physics: As IT load scales up, fixed baseline overhead is dilu
 causing Dynamic PUE to improve from ~1.65 down toward the BOI target of 1.30.
 """
 
+import os
+import sys
 import time
 import requests
 
-API_URL = "http://localhost:8000/api/v1"
-TOKEN = "infrapulse_secret_token_change_in_production"
+API_URL = os.getenv("API_URL", "http://localhost:8000/api/v1")
+TOKEN = os.getenv("AGENT_SECRET_TOKEN", "infrapulse_secret_token_change_in_production")
 HEADERS = {"X-Agent-Token": TOKEN, "Content-Type": "application/json"}
 
 STAGES = [

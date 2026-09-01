@@ -67,6 +67,38 @@ export async function deletePowerLog(id: string): Promise<void> {
   }
 }
 
+export async function fetchAiInsights(): Promise<import('../types/api').AiAdvisorResponse> {
+  const res = await fetch(`${API_BASE}/ai/insights`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch AI insights: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function triggerSimulateCluster(): Promise<import('../types/api').SimulationResult> {
+  const res = await fetch(`${API_BASE}/simulate/cluster`, { method: 'POST' });
+  if (!res.ok) {
+    throw new Error(`Cluster simulation failed: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function triggerSimulateStress(): Promise<import('../types/api').SimulationResult> {
+  const res = await fetch(`${API_BASE}/simulate/stress`, { method: 'POST' });
+  if (!res.ok) {
+    throw new Error(`PUE stress simulation failed: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function triggerSimulateOutage(): Promise<import('../types/api').SimulationResult> {
+  const res = await fetch(`${API_BASE}/simulate/outage`, { method: 'POST' });
+  if (!res.ok) {
+    throw new Error(`Outage simulation failed: ${res.statusText}`);
+  }
+  return res.json();
+}
+
 // Utility: Format bytes into human readable binary units
 export function formatBytes(bytes?: number | null, decimals = 1): string {
   if (bytes === undefined || bytes === null || isNaN(bytes) || bytes === 0) return '0 B';

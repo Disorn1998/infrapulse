@@ -4,19 +4,23 @@ import { FacilityKpi } from './components/FacilityKpi';
 import { HostCard } from './components/HostCard';
 import { MetricCharts } from './components/MetricCharts';
 import { CapacityView } from './components/CapacityView';
+import { AiAdvisorWidget } from './components/AiAdvisorWidget';
+import { DemoControlBar } from './components/DemoControlBar';
 import { EmptyState } from './components/EmptyState';
-import { Host, Metric, FacilityOverview } from './types/api';
-import { fetchHosts, fetchHostMetrics, fetchFacilityOverview } from './services/api';
-import { Server, AlertCircle, Activity, Zap } from 'lucide-react';
+import { Host, Metric, FacilityOverview, AiAdvisorResponse } from './types/api';
+import { fetchHosts, fetchHostMetrics, fetchFacilityOverview, fetchAiInsights } from './services/api';
+import { Server, AlertCircle, Activity, Zap, Bot } from 'lucide-react';
 
 const REFRESH_INTERVAL_SECONDS = 15;
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'telemetry' | 'capacity'>('telemetry');
+  const [activeTab, setActiveTab] = useState<'telemetry' | 'capacity' | 'ai_advisor'>('telemetry');
   const [hosts, setHosts] = useState<Host[]>([]);
   const [selectedHostId, setSelectedHostId] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<Metric[]>([]);
   const [facility, setFacility] = useState<FacilityOverview | null>(null);
+  const [aiData, setAiData] = useState<AiAdvisorResponse | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
   const [timeRange, setTimeRange] = useState<string>('1h');
   const [countdown, setCountdown] = useState<number>(REFRESH_INTERVAL_SECONDS);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -31,13 +35,15 @@ export const App: React.FC = () => {
     setError(null);
 
     try {
-      const [fetchedHosts, fetchedFacility] = await Promise.all([
+      const [fetchedHosts, fetchedFacility, fetchedAi] = await Promise.all([
         fetchHosts(),
         fetchFacilityOverview().catch(() => null),
+        fetchAiInsights().catch(() => null),
       ]);
 
       setHosts(fetchedHosts);
       setFacility(fetchedFacility);
+      if (fetchedAi) setAiData(fetchedAi);
 
       if (fetchedHosts.length > 0) {
         setSelectedHostId((prev) => (prev && fetchedHosts.some((h) => h.id === prev) ? prev : fetchedHosts[0].id));
@@ -63,6 +69,18 @@ export const App: React.FC = () => {
       }
     } catch (err) {
       console.error(`Failed to load metrics for ${hostId}:`, err);
+    }
+  }, []);
+
+  const loadAiInsights = useCallback(async () => {
+    try {
+      setIsAiLoading(true);
+      const res = await fetchAiInsights();
+      setAiData(res);
+    } catch (err) {
+      console.error('Failed to load AI insights:', err);
+    } finally {
+      setIsAiLoading(false);
     }
   }, []);
 
@@ -112,6 +130,9 @@ export const App: React.FC = () => {
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+        {/* Interactive 1-Click Demo Control Bar */}
+        <DemoControlBar onSimulationComplete={handleManualRefresh} />
+
         {error && (
           <div className="bg-rose-950/60 border border-rose-500/40 rounded-xl p-4 flex items-center gap-3 text-rose-300 font-mono text-xs shadow-lg">
             <AlertCircle className="w-5 h-5 text-rose-400 flex-shrink-0" />
@@ -125,7 +146,7 @@ export const App: React.FC = () => {
         <FacilityKpi facility={facility} />
 
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-surface-border pb-2">
+        <div className="flex items-center gap-2 border-b border-surface-border pb-2 overflow-x-auto">
           <button
             onClick={() => setActiveTab('telemetry')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all ${
@@ -148,6 +169,18 @@ export const App: React.FC = () => {
           >
             <Zap className="w-4 h-4" />
             <span>Capacity & Power Intelligence</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('ai_advisor')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all ${
+              activeTab === 'ai_advisor'
+                ? 'bg-gradient-to-r from-purple-500 to-cyan-500 text-slate-950 shadow-lg shadow-purple-500/20'
+                : 'bg-surface-card hover:bg-slate-800 text-slate-400 border border-surface-border'
+            }`}
+          >
+            <Bot className="w-4 h-4 text-purple-400" />
+            <span>🤖 AI Infrastructure Copilot</span>
           </button>
         </div>
 
@@ -181,7 +214,7 @@ export const App: React.FC = () => {
                 </div>
               </div>
 
-              <div className="lg:col-span-8">
+              <div className="lg:col-span-8 space-y-6">
                 {selectedHost ? (
                   <MetricCharts
                     selectedHost={selectedHost}
@@ -203,6 +236,15 @@ export const App: React.FC = () => {
         {/* Tab 2: Capacity & Power Intelligence */}
         {activeTab === 'capacity' && (
           <CapacityView hosts={hosts} onRefresh={handleManualRefresh} />
+        )}
+
+        {/* Tab 3: AI Infrastructure Copilot */}
+        {activeTab === 'ai_advisor' && (
+          <AiAdvisorWidget
+            data={aiData}
+            loading={isAiLoading}
+            onRefresh={loadAiInsights}
+          />
         )}
       </main>
 
