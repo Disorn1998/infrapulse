@@ -45,7 +45,7 @@
 5. **🤖 AI Infrastructure Copilot:**
    * Evaluates overall data center health score (0–100) with diagnostic insight cards covering thermal hotspots, phase balancing, PUE dilution, and expansion runway.
 6. **🚀 1-Line Universal Agent Installers:**
-   * **Linux / Ubuntu:** `curl -sSL https://raw.githubusercontent.com/Disorn1998/infrapulse/main/agent/install.sh | bash`
+   * **Linux / Ubuntu:** `curl -sSL https://raw.githubusercontent.com/Disorn1998/infrapulse/main/agent/install.sh | sudo bash`
    * **Windows (PowerShell):** `irm https://raw.githubusercontent.com/Disorn1998/infrapulse/main/agent/install.ps1 | iex`
 
 ---

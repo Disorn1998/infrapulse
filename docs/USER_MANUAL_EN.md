@@ -75,10 +75,10 @@ Run PowerShell and execute:
 irm https://raw.githubusercontent.com/Disorn1998/infrapulse/main/agent/install.ps1 | iex
 ```
 
-### On Linux / Ubuntu:
-Run Terminal and execute:
+#### For Linux / Ubuntu (via Terminal):
+Run the following 1-line command to install and start the background daemon:
 ```bash
-curl -sSL https://raw.githubusercontent.com/Disorn1998/infrapulse/main/agent/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/Disorn1998/infrapulse/main/agent/install.sh | sudo bash
 ```
 
 ---

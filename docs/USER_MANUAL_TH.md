@@ -82,7 +82,7 @@ irm https://raw.githubusercontent.com/Disorn1998/infrapulse/main/agent/install.p
 #### บนระบบปฏิบัติการ Linux / Ubuntu:
 เปิด Terminal แล้ววางคำสั่ง 1 บรรทัดนี้:
 ```bash
-curl -sSL https://raw.githubusercontent.com/Disorn1998/infrapulse/main/agent/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/Disorn1998/infrapulse/main/agent/install.sh | sudo bash
 ```
 
 ---
