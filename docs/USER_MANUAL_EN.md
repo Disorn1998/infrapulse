@@ -3,37 +3,35 @@
 
 ---
 
-## 🎯 1. Project Objectives & Purpose
+## 🎯 1. Purpose & Motivation
 
 ### 📌 The Real-World Engineering Problem
-In enterprise edge facilities, branch offices, factories, hospitals, and server rooms housing 5 to 50 physical servers and network switches:
-1. **Commercial DCIM Software Is Cost-Prohibitive:** Enterprise systems (Schneider EcoStruxure, Sunbird, Nlyte) cost millions of Baht and require proprietary sensor hardware.
-2. **Standard Monitoring Lacks Facility Physics:** Common sysadmin tools (Prometheus, Grafana, Netdata) focus purely on OS utilization (CPU/RAM/Disk) and remain **completely blind to electrical breaker capacity, PDU load balancing, and energy efficiency (PUE)**.
-3. **Risk of Catastrophic Main Breaker Trips:** Adding new server compute without automated continuous capacity validation frequently triggers main electrical breaker trips during peak workloads.
-4. **Uncertainty in Redundant Power Failover (N+1):** Facilities maintain dual utility feeds (Feed A / Feed B) but lack real-time validation whether a single surviving feed can sustain total IT load during an unannounced blackout.
+In enterprise branch offices, factories, hospitals, and edge computing sites (5–50 physical servers and network switches):
+1. **Commercial DCIM Software is Prohibitively Expensive:** Enterprise tools cost millions of Baht and demand proprietary sensor hardware.
+2. **Standard Monitoring Tools Lack Electrical & Thermal Awareness:** Prometheus, Grafana, and Netdata monitor CPU/RAM/Disk but **completely ignore rack breaker capacity, PUE efficiency, and thermal rack distribution**.
+3. **Risk of Catastrophic Breaker Trips:** Connecting new hardware without real-time electrical headroom checks can trigger main breaker trips.
+4. **Uncertainty in N+1 Electrical Redundancy:** Facilities have Dual Feeds (A/B) but cannot simulate whether a single-feed outage will cause cascading breaker overloads.
 
-### 💡 Purpose & Value Proposition of InfraPulse
-* **Unified IT Telemetry & DCIM:** Bridges operating system metrics with electrical engineering physics within a single-pane-of-glass platform.
-* **Aligned with Thailand BOI Green Data Center Standards:** Complies with energy efficiency benchmarks targeting **PUE $\le 1.30$** for tax incentives.
-* **National Electrical Code (NEC) Compliance:** Automatically applies the **NEC 80% Continuous Load Derate rule ($0.800$ factor)** for circuit breaker safety.
-* **Zero-Licensing Open-Source Stack:** Built on modern, reproducible containerized architecture (FastAPI, PostgreSQL 16, React 18 TypeScript, and Docker).
-* **AI Infrastructure Copilot:** Integrated AI advisor delivering real-time DCIM Health Scores (0–100) and actionable engineering recommendations.
+### 💡 The Solution: InfraPulse
+* **Unifies IT Telemetry with Physical DCIM:** Gathers OS metrics and calculates real-time power physics and thermal index in a single interface.
+* **Thailand BOI Green Data Center Compliance:** Tracks dynamic PUE against the **PUE $\le 1.30$** tax incentive standard.
+* **International Electrical Safety:** Enforces **NEC 80% Continuous Load Derate** limits.
+* **Zero-Licensing Cost:** 100% open-source stack on FastAPI, PostgreSQL, React TypeScript, and Docker.
+* **AI Infrastructure Copilot:** Evaluates data center health score (0–100) and produces automated engineering recommendations.
 
 ---
 
-## ⚙️ 2. System Architecture & How It Works
-
-InfraPulse integrates 6 core engineering subsystems operating concurrently in real-time:
+## ⚙️ 2. Architecture & Subsystems
 
 ```mermaid
 flowchart TD
     subgraph Monitored_Nodes [Monitored Infrastructure Nodes]
-        U[Ubuntu Server / Node<br/>psutil Daemon]
-        W[Windows Desktop / Node<br/>psutil Task]
+        U[Ubuntu Server / Node<br/>psutil Daemon + Temp]
+        W[Windows Desktop / Node<br/>psutil Task + Temp]
     end
 
     subgraph Client_Agent_Layer [Agent Core Engine]
-        U --> SAMP[Adaptive Metric Sampler]
+        U --> SAMP[Adaptive Metric Sampler + Temp °C]
         W --> SAMP
         SAMP --> NET_CHECK{Network Link<br/>Available?}
         NET_CHECK -- No (Offline Outage) --> BUF[SQLite Circular Ring Buffer<br/>Cap: 1,000 Records]
@@ -52,10 +50,11 @@ flowchart TD
         PWR_ENG --> PUE_ENG[Dynamic PUE Calculator]
         PWR_ENG --> RED_ENG[Dual-Feed N+1 Breaker Watchdog]
         PWR_ENG --> CAP_ENG[Linear Regression Forecaster]
+        PWR_ENG --> RACK_ENG[Multi-Rack & Thermal Heatmap Engine]
         PWR_ENG --> AI_ENG[AI Infrastructure Copilot]
         
         DB --> SCHED[Background Alert Scheduler]
-        SCHED --> ALERT_FSM[Alert Hysteresis State Machine<br/>30-Min Cooldown Suppression]
+        SCHED --> ALERT_FSM[Alert Hysteresis State Machine<br/>15-Min Cooldown Suppression]
         ALERT_FSM --> SMTP[Gmail SMTP Dispatcher]
         SMTP --> MAIL[(Operator Inbox)]
     end
@@ -68,118 +67,59 @@ flowchart TD
 
 ---
 
-### 🔬 Mathematical Formulations & Engineering Principles
+## 🚀 3. Quickstart: 1-Line Universal Agent Installers
 
-#### 1. Dynamic Server Power Estimation (Linear Interpolation Model)
-Estimates server electrical draw (Watts) based on instantaneous CPU compute:
-$$P_{\text{node}}(t) = P_{\text{idle}} + \left( \frac{\text{CPU Usage \%}(t)}{100} \times (P_{\text{rated}} - P_{\text{idle}}) \right)$$
-* *Example:* A server node with $P_{\text{idle}} = 25\text{W}$ and $P_{\text{rated}} = 120\text{W}$ operating at 50% CPU draws $25 + 0.5 \times (120 - 25) = 72.5\text{ Watts}$.
-
-#### 2. Dynamic PUE with Fixed Baseline Facility Overhead
-In physical data centers, CRAC cooling fans, lighting, and UPS idle losses create a constant baseline draw ($P_{\text{fixed}} = 35\text{W}$) that remains energized regardless of IT load:
-$$P_{\text{Facility}}(t) = P_{\text{IT}}(t) + k_c P_{\text{IT}}(t) + \lambda_{\text{pdu}} P_{\text{IT}}(t) + P_{\text{fixed}}$$
-$$\text{PUE}(t) = \frac{P_{\text{Facility}}(t)}{P_{\text{IT}}(t)} = 1 + k_c + \lambda_{\text{pdu}} + \frac{P_{\text{fixed}}}{P_{\text{IT}}(t)}$$
-* *Physical Principle:* As server compute workload scales up, constant baseline overhead is diluted, driving Dynamic PUE down from $1.65 \rightarrow 1.19$ toward optimal thermodynamic efficiency ($\le 1.30$).
-
-#### 3. Dual-Feed (A/B) N+1 Redundancy & NEC 80% Derating
-Simulates a total failure on Feed A and evaluates whether Feed B alone can sustain total cluster load under the **NEC 80% continuous rating limit ($3,680\text{W} \times 0.800 = 2,944\text{W}$)**:
-* $\sum P_{\text{IT}} \le 2,944\text{W} \rightarrow$ **`HEALTHY`** (Safe electrical headroom)
-* $\sum P_{\text{IT}} > 2,944\text{W} \rightarrow$ **`NON_COMPLIANT`** (Critical breaker trip risk upon single-feed outage)
-
-#### 4. Predictive Capacity Forecasting via Linear Regression ($y = mx + c$)
-Performs time-series trend analysis on historical electrical draw to determine daily growth slope $m$ (Watts/Day) and project the exact date of 100% capacity exhaustion:
-$$\text{Days to Exhaustion} = \frac{\text{Total Capacity (10,000 W)} - \text{Current Power}}{\text{Growth Slope (Watts/Day)}}$$
-
-#### 5. Hysteresis Alerting Engine & Cooldown Suppression
-* State Machine transitions: `OK` $\rightarrow$ `PENDING` $\rightarrow$ `FIRING` $\rightarrow$ `RESOLVED`
-* **30-Minute Cooldown Window:** Suppresses duplicate emails during ongoing outages.
-* **Auto-Recovery Notifications:** Automatically dispatches a **`[RESOLVED]`** email as soon as telemetry normalizes.
-
-#### 6. AI Infrastructure Copilot & DCIM Diagnostics
-* Generates real-time **DCIM Health Score (0–100)**
-* Detects electrical phase imbalances across Feed A and Feed B
-* Delivers prioritized, actionable AI recommendations for energy conservation, breaker load balancing, and capacity runway management.
-
----
-
-## 📖 3. Step-by-Step Installation & Operations Guide
-
-### 🚀 Step 1: Boot the Central Monitoring Stack
-1. Ensure Docker Desktop is installed and running.
-2. Open terminal in the project directory:
-   ```bash
-   cd infrapulse
-   cp .env.example .env
-   docker compose up -d --build
-   ```
-3. Open browser: **`http://localhost:3000`**
-
----
-
-### 💻 Step 2: Deploy the Agent on Monitored Nodes
-
-#### Ubuntu / Linux (systemd Background Service):
-```bash
-cd infrapulse/agent
-pip install -r requirements.txt
-sudo bash deploy/install_ubuntu_service.sh
-```
-
-#### Windows (Task Scheduler Service):
+### On Windows (PowerShell):
+Run PowerShell and execute:
 ```powershell
-cd infrapulse\agent
-pip install -r requirements.txt
-powershell -ExecutionPolicy Bypass -File deploy\install_windows_task.ps1
+irm https://raw.githubusercontent.com/Disorn1998/infrapulse/main/agent/install.ps1 | iex
 ```
 
----
-
-### 🖥️ Step 3: Operating the Web Dashboard
-
-#### 1. `🎮 Interactive Demo Sandbox` (Top Toolbar):
-* **`🚀 Simulate Cluster` Button:** 1-Click provisions 4 enterprise server nodes (Proxy, DB, AI, Storage) into 42U rack.
-* **`⚡ Spike Load (PUE Curve)` Button:** 1-Click scales cluster CPU to 92%, demonstrating PUE optimization in real-time.
-* **`🔌 Feed A Outage` Button:** 1-Click simulates Feed A blackout, validating N+1 failover headroom.
-
-#### 2. `🖥️ Real-Time Telemetry` Tab:
-* **Node Inventory Cards:** Live Online/Offline badges (pulsing green when heartbeat received within 90 seconds).
-* **Metric Gauges:** Real-time CPU %, RAM %, and Disk % gauges.
-* **Dual-Stream Network Chart:** Distinct curves for received bandwidth (`RX Received` - Green) and transmitted bandwidth (`TX Transmitted` - Amber).
-
-#### 3. `⚡ Capacity & Power Intelligence` Tab:
-* **Electrical Capacity Gauge:** Total facility wattage draw vs 10 kW breaker rating.
-* **Capacity Runout Forecaster:** Linear regression trajectory chart projecting runout dates.
-* **42U Rack Elevation View:** Graphical 42U rack showing occupied server slots and assigned feeds (Feed A vs Feed B).
-* **Historical Monthly Energy Audits:** Long-term PUE improvement bar chart with an **"+ Add Monthly Audit"** modal for entering utility invoices.
-
-#### 4. `🤖 AI Infrastructure Copilot` Tab:
-* **DCIM Health Index Gauge:** Overall score (0-100) reflecting thermodynamic, electrical, and hardware integrity.
-* **Executive Summary:** High-level operational assessment for engineering leadership.
-* **Smart Insight Cards:** Category-tagged recommendations with estimated efficiency gains and actionable remediation paths.
-
----
-
-### 📧 Step 4: Configuring Live Email Alerts (Gmail SMTP)
-Edit [`.env`](file:///c:/Users/msi/Desktop/disorn/project/infrapulse/.env) with your 16-character Gmail App Password:
-```env
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your_email@gmail.com
-SMTP_PASSWORD=your_16_character_app_password
-SMTP_FROM_EMAIL=your_email@gmail.com
-DEFAULT_ALERT_RECIPIENT=your_email@gmail.com
-```
-*Test email delivery:*
+### On Linux / Ubuntu:
+Run Terminal and execute:
 ```bash
-curl -X POST "http://localhost:8000/api/v1/alerts/test?recipient_email=your_email@gmail.com"
+curl -sSL https://raw.githubusercontent.com/Disorn1998/infrapulse/main/agent/install.sh | bash
 ```
 
 ---
 
-### 🌐 Step 5: Sharing a Public Live Demo Link via Cloudflare Tunnel (Free)
-Generate a public HTTPS URL accessible from anywhere worldwide without opening firewall ports:
-```powershell
-cd infrapulse
-.\cloudflared.exe tunnel --url http://localhost:3000
-```
-Copy the generated HTTPS URL (e.g. `https://xxx.trycloudflare.com`) and paste it into your resume or portfolio!
+## 🖥️ 4. Dashboard Features & Operations
+
+### 1. 🎮 Interactive Demo Sandbox (Top Bar)
+* **`🚀 Simulate Cluster`:** Provisons 5 enterprise nodes distributed across **`Rack-01`**, **`Rack-02`**, and **`Rack-03`**.
+* **`⚡ Spike Load (PUE Curve)`:** Simulates 92% CPU surge demonstrating thermodynamic Fixed Overhead Dilution.
+* **`🔌 Feed A Outage`:** Simulates single-feed failure and validates N+1 failover headroom.
+
+### 2. 🖥️ Real-Time Telemetry Tab
+* **Node Cards:** Live Online/Offline status, uptime counter, and **`🌡️ XX.X°C`** thermal pill (Cyan/Green/Amber/Red).
+* **Metric Gauges:** Real-time CPU %, RAM %, and Disk % utilization.
+* **Dual-Stream Network Chart:** Independent green line for RX (incoming) and orange line for TX (outgoing) throughput.
+
+### 3. ⚡ Capacity & Power Intelligence Tab
+* **Facility Capacity Gauge:** Electrical load against rated breaker limits (10,000 W).
+* **Capacity Runout Forecast:** Linear regression trajectory and estimated days to exhaustion.
+* **Multi-Rack Elevation & Thermal Heatmap Matrix:**
+  * Interactive switcher between **`Rack-01 (Web & App)`**, **`Rack-02 (Database)`**, and **`Rack-03 (AI/HPC GPU & Storage)`**.
+  * Visual thermal heatmap per rack unit slot (U1–U42).
+* **Historical Monthly Energy & PUE Audit Log:** Audit bar chart with **"+ Add Monthly Audit"** and **"Export DCIM Audit Report"** buttons.
+
+### 4. 🤖 AI Infrastructure Copilot Tab
+* **DCIM Health Score (0–100):** Comprehensive facility health evaluation.
+* **Executive Summary:** Plain-language executive overview.
+* **Smart Insight Cards:** Actionable engineering recommendations for hotspot cooling, phase balancing, and PUE optimization.
+
+### 5. ⚙️ Alert Rules Settings (Header Gear Button)
+* Interactive sliders for **CPU %, RAM %, Disk %, and Thermal Hotspot (°C)** thresholds.
+* Live notification email configuration with instant persistence.
+
+### 6. 📑 Export Audit Report (Header Export Button)
+* **Download CSV Raw Dataset:** Full CSV export of node inventory, power draw, and historical monthly audits.
+* **Print Executive Summary:** Printable audit sheet with **Thailand BOI Compliance Certificate ($\text{PUE} \le 1.30$)**.
+
+---
+
+## 🌐 5. Online Access & Live URLs
+
+* **🚀 24/7 Cloud Production Dashboard:** [https://infrapulse-0ft2.onrender.com/](https://infrapulse-0ft2.onrender.com/)
+* **🌐 Cloudflare Tunnel Live Demo:** [https://membership-guarantee-forgotten-div.trycloudflare.com](https://membership-guarantee-forgotten-div.trycloudflare.com/)
+* **📚 Interactive OpenAPI/Swagger Docs:** [https://infrapulse-backend-fddp.onrender.com/docs](https://infrapulse-backend-fddp.onrender.com/docs)
