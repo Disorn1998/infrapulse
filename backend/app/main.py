@@ -76,6 +76,26 @@ def migrate_db():
         except Exception as e:
             print(f"Load columns probably exist: {e}")
 
+@app.get("/api/v1/fix-db")
+def manual_fix_db():
+    results = []
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("ALTER TABLE metrics ADD COLUMN cpu_temperature_celsius FLOAT DEFAULT 42.0;"))
+            conn.commit()
+            results.append("Added cpu_temp")
+        except Exception as e:
+            results.append(f"cpu_temp error: {e}")
+        try:
+            conn.execute(text("ALTER TABLE metrics ADD COLUMN load_1m FLOAT;"))
+            conn.execute(text("ALTER TABLE metrics ADD COLUMN load_5m FLOAT;"))
+            conn.execute(text("ALTER TABLE metrics ADD COLUMN load_15m FLOAT;"))
+            conn.commit()
+            results.append("Added loads")
+        except Exception as e:
+            results.append(f"loads error: {e}")
+    return {"results": results}
+
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
