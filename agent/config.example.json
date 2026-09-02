@@ -1,5 +1,5 @@
 {
-  "backend_url": "http://localhost:8000/api/v1/metrics",
+  "backend_url": "https://infrapulse-backend-fddp.onrender.com/api/v1/metrics",
   "agent_token": "infrapulse_secret_token_change_in_production",
   "collect_interval_seconds": 30,
   "buffer_db_path": "agent_buffer.db",
