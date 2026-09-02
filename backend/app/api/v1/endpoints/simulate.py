@@ -179,7 +179,7 @@ def trigger_cluster_simulation(db: Session = Depends(get_db)):
             p_cfg.rack_unit_height = node["height"]
 
         # Insert live metric
-        calculated_w = calculate_node_power_watts(node["cpu"], node["idle_w"], node["rated_w"])
+        calculated_w = calculate_node_power_watts(idle_watts=node["idle_w"], rated_watts=node["rated_w"], cpu_percent=node["cpu"])
         metric = Metric(
             host_id=host.id,
             timestamp=now,
@@ -217,7 +217,7 @@ def trigger_stress_simulation(db: Session = Depends(get_db)):
             idle_w = p_cfg.idle_watts if p_cfg else 30.0
             rated_w = p_cfg.rated_watts if p_cfg else 200.0
             
-            calc_w = calculate_node_power_watts(92.0, idle_w, rated_w)
+            calc_w = calculate_node_power_watts(idle_watts=idle_w, rated_watts=rated_w, cpu_percent=92.0)
             metric = Metric(
                 host_id=host.id,
                 timestamp=now,

@@ -10,7 +10,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts';
-import { Cpu, Wifi, Clock, Server, Zap, Activity } from 'lucide-react';
+import { Cpu, Wifi, Clock, Server, Zap, Activity, HardDrive } from 'lucide-react';
 import { Host, Metric } from '../types/api';
 import { formatBytes, formatRate, formatUptime } from '../services/api';
 
@@ -45,6 +45,8 @@ export const MetricCharts: React.FC<MetricChartsProps> = ({
       netSent: m.net_sent_bytes_per_sec,
       netRecv: m.net_recv_bytes_per_sec,
       powerWatts: m.calculated_power_watts,
+      load1m: m.load_1m || 0,
+      load5m: m.load_5m || 0,
     };
   });
 
@@ -240,15 +242,93 @@ export const MetricCharts: React.FC<MetricChartsProps> = ({
             )}
           </div>
         </div>
+        {/* 3. Disk & Power Profile Chart */}
+        <div className="bg-surface-card border border-surface-border rounded-xl p-5 shadow-sm lg:col-span-2">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <HardDrive className="w-4 h-4 text-purple-400" />
+              <h3 className="text-sm font-bold font-mono text-white">Storage Utilization & Power Profile</h3>
+            </div>
+            <div className="flex items-center gap-3 text-xs font-mono">
+              <span className="flex items-center gap-1.5 text-purple-400">
+                <span className="w-2.5 h-0.5 bg-purple-400 rounded"></span> Disk ({latestMetric?.disk_percent ?? 0}%)
+              </span>
+              <span className="flex items-center gap-1.5 text-amber-400">
+                <span className="w-2.5 h-0.5 bg-amber-400 rounded"></span> Power ({latestMetric?.calculated_power_watts?.toFixed(1) ?? 0} W)
+              </span>
+            </div>
+          </div>
+
+          <div className="h-64 w-full">
+            {chartData.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-slate-500 text-xs font-mono">
+                No storage or power telemetry sampled for this timeframe
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="diskGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#a855f7" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#a855f7" stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                  <XAxis dataKey="time" minTickGap={45} interval="preserveStartEnd" stroke="#64748b" fontSize={11} tickLine={false} />
+                  <YAxis yAxisId="left" stroke="#64748b" fontSize={11} domain={[0, 100]} tickLine={false} />
+                  <YAxis yAxisId="right" orientation="right" stroke="#64748b" fontSize={11} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#0f172a',
+                      borderColor: '#1e293b',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      fontFamily: 'monospace',
+                    }}
+                    labelStyle={{ color: '#94a3b8' }}
+                  />
+                  <Area
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="disk"
+                    name="Disk %"
+                    stroke="#a855f7"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#diskGradient)"
+                    connectNulls={false}
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="powerWatts"
+                    name="Power (W)"
+                    stroke="#f59e0b"
+                    strokeWidth={2}
+                    dot={false}
+                    connectNulls={false}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Node Hardware & Power Specs Context Banner */}
-      <div className="bg-surface border border-surface-border rounded-xl p-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono">
+      <div className="bg-surface border border-surface-border rounded-xl p-4 grid grid-cols-2 md:grid-cols-5 gap-4 text-xs font-mono">
         <div className="space-y-1">
           <span className="text-slate-500 uppercase text-[10px]">Uptime Duration</span>
           <p className="text-slate-200 font-semibold flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5 text-cyan-400" />
             {formatUptime(latestMetric?.uptime_seconds || 0)}
+          </p>
+        </div>
+        <div className="space-y-1">
+          <span className="text-slate-500 uppercase text-[10px]">Load Average (1m/5m)</span>
+          <p className="text-slate-200 font-semibold flex items-center gap-1.5">
+            <Activity className="w-3.5 h-3.5 text-indigo-400" />
+            {latestMetric?.load_1m?.toFixed(2) || '0.00'} / {latestMetric?.load_5m?.toFixed(2) || '0.00'}
           </p>
         </div>
         <div className="space-y-1">

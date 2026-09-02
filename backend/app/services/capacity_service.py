@@ -85,8 +85,9 @@ def calculate_capacity_forecast(db: Session) -> CapacityForecastResponse:
                 peak_hostname = h.hostname
 
     surviving_it = max(0.0, overview.total_it_power_watts - peak_watts)
-    headroom = total_capacity - current_power
-    is_safe = current_power < (total_capacity * 0.80)  # Safe if under 80% breaker continuous rating
+    surviving_facility_power = max(0.0, current_power - peak_watts) # simplified post-drop estimate
+    headroom = max(0.0, total_capacity - surviving_facility_power)
+    is_safe = surviving_facility_power < (total_capacity * 0.80)  # Safe if under 80% breaker continuous rating
 
     peak_drop = PeakNodeDropAnalysis(
         peak_node_hostname=peak_hostname,

@@ -102,7 +102,7 @@ def ingest_metric(
     power_cfg = db.query(PowerConfig).filter(PowerConfig.host_id == host.id).first()
     if not power_cfg:
         default_pdu = db.query(PDU).filter(PDU.feed == "A").first()
-        idle_w, rated_w = (45.0, 200.0) if "win" in metric_in.os_type.lower() else (15.0, 65.0)
+        idle_w, rated_w = (120.0, 500.0) if "win" in metric_in.os_type.lower() else (80.0, 350.0)
             
         power_cfg = PowerConfig(
             host_id=host.id,
