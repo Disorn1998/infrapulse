@@ -53,6 +53,22 @@ export const App: React.FC = () => {
 
       if (fetchedHosts.length > 0) {
         setSelectedHostId((prev) => (prev && fetchedHosts.some((h) => h.id === prev) ? prev : fetchedHosts[0].id));
+
+        // BUG-02 fix: Fetch latest metric snapshot for ALL hosts (not just selected)
+        const latestMap: Record<string, Metric> = {};
+        await Promise.all(
+          fetchedHosts.map(async (h) => {
+            try {
+              const m = await fetchHostMetrics(h.id, '5m');
+              if (m.length > 0) latestMap[h.id] = m[m.length - 1];
+            } catch { /* skip failed hosts */ }
+          })
+        );
+        setLatestMetricsMap(latestMap);
+      } else {
+        // BUG-04 fix: Reset selection when no hosts remain
+        setSelectedHostId(null);
+        setLatestMetricsMap({});
       }
     } catch (err: any) {
       console.error('Error fetching dashboard telemetry:', err);

@@ -76,7 +76,11 @@ export async function fetchAiInsights(): Promise<import('../types/api').AiAdviso
 }
 
 export async function triggerSimulateCluster(): Promise<import('../types/api').SimulationResult> {
-  const res = await fetch(`${API_BASE}/simulate/cluster`, { method: 'POST' });
+  const res = await fetch(`${API_BASE}/simulate/cluster`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}',
+  });
   if (!res.ok) {
     throw new Error(`Cluster simulation failed: ${res.statusText}`);
   }
@@ -84,7 +88,11 @@ export async function triggerSimulateCluster(): Promise<import('../types/api').S
 }
 
 export async function triggerSimulateStress(): Promise<import('../types/api').SimulationResult> {
-  const res = await fetch(`${API_BASE}/simulate/stress`, { method: 'POST' });
+  const res = await fetch(`${API_BASE}/simulate/stress`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}',
+  });
   if (!res.ok) {
     throw new Error(`PUE stress simulation failed: ${res.statusText}`);
   }
@@ -101,7 +109,11 @@ export async function deleteHost(hostId: string): Promise<void> {
 }
 
 export async function triggerSimulateReset(): Promise<import('../types/api').SimulationResult> {
-  const res = await fetch(`${API_BASE}/simulate/reset`, { method: 'POST' });
+  const res = await fetch(`${API_BASE}/simulate/reset`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}',
+  });
   if (!res.ok) {
     throw new Error(`Reset simulation failed: ${res.statusText}`);
   }
@@ -109,7 +121,11 @@ export async function triggerSimulateReset(): Promise<import('../types/api').Sim
 }
 
 export async function triggerSimulateOutage(): Promise<import('../types/api').SimulationResult> {
-  const res = await fetch(`${API_BASE}/simulate/outage`, { method: 'POST' });
+  const res = await fetch(`${API_BASE}/simulate/outage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}',
+  });
   if (!res.ok) {
     throw new Error(`Outage simulation failed: ${res.statusText}`);
   }

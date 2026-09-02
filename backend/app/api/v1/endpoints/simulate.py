@@ -137,7 +137,7 @@ def trigger_cluster_simulation(db: Session = Depends(get_db)):
         host = db.query(Host).filter(Host.hostname == node["hostname"]).first()
         if not host:
             host = Host(
-                id=node["hostname"],
+                id=node["hostname"].lower(),
                 hostname=node["hostname"],
                 ip_address=node["ip_address"],
                 os_type=node["os_type"],
@@ -266,8 +266,12 @@ def trigger_reset_simulation(db: Session = Depends(get_db)):
     for name in simulated_names:
         h = db.query(Host).filter(Host.hostname == name).first()
         if h:
-            db.delete(h)
-            deleted_count += 1
+            try:
+                db.delete(h)
+                db.flush()
+                deleted_count += 1
+            except Exception:
+                db.rollback()
     db.commit()
     return SimulationResult(
         status="success",

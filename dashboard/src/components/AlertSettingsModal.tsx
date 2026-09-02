@@ -27,7 +27,13 @@ export const AlertSettingsModal: React.FC<AlertSettingsModalProps> = ({ isOpen, 
       setErrorMsg(null);
       setSavedSuccess(false);
       fetchAlertRulesSummary()
-        .then((data) => setSettings(data))
+        .then((data) => setSettings(data ?? {
+          cpu_threshold: 85,
+          ram_threshold: 90,
+          disk_threshold: 90,
+          temp_threshold: 75,
+          recipient_email: 'disorn.jp@gmail.com',
+        }))
         .catch((err) => console.error('Failed to load alert rules:', err))
         .finally(() => setLoading(false));
     }

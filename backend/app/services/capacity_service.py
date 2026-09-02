@@ -102,13 +102,15 @@ def calculate_capacity_forecast(db: Session) -> CapacityForecastResponse:
     )
 
     # 3. Time-Series Trend & Linear Regression (y = mx + c)
-    # Query metric history across the last 7 days or all metrics
+    # Query metric history — aggregate total cluster power per hourly bucket
+    hour_bucket = func.date_trunc('hour', Metric.timestamp)
     metrics = (
-        db.query(Metric.timestamp, func.sum(Metric.calculated_power_watts))
+        db.query(hour_bucket.label('hour'), func.sum(Metric.calculated_power_watts))
         .join(Host, Host.id == Metric.host_id)
         .filter(Host.is_test == False)
-        .group_by(Metric.timestamp)
-        .order_by(Metric.timestamp.asc())
+        .filter(Metric.calculated_power_watts.isnot(None))
+        .group_by(hour_bucket)
+        .order_by(hour_bucket.asc())
         .limit(200)
         .all()
     )

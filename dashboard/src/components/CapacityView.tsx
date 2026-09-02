@@ -45,6 +45,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({ hosts, onOpenExport 
   const [racks, setRacks] = useState<RackSummary[]>([]);
   const [selectedRackId, setSelectedRackId] = useState<string>('Rack-01');
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [showLogModal, setShowLogModal] = useState<boolean>(false);
   const [logForm, setLogForm] = useState({
     log_month: new Date().toISOString().substring(0, 7),
@@ -78,19 +79,29 @@ export const CapacityView: React.FC<CapacityViewProps> = ({ hosts, onOpenExport 
 
   const handleSaveLog = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       await createPowerLog(logForm);
       setShowLogModal(false);
       loadData();
     } catch (err) {
       alert('Failed to save power log: ' + err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleDeleteLog = async (id: string) => {
+    if (isSubmitting) return;
     if (confirm('Delete this power log record?')) {
-      await deletePowerLog(id);
-      loadData();
+      setIsSubmitting(true);
+      try {
+        await deletePowerLog(id);
+        loadData();
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -284,8 +295,8 @@ export const CapacityView: React.FC<CapacityViewProps> = ({ hosts, onOpenExport 
             </div>
 
             {/* Multi-Rack Switcher Tabs */}
-            <div className="grid grid-cols-3 gap-1.5 mb-3 bg-slate-900/80 p-1 rounded-lg border border-slate-800">
-              {['Rack-01', 'Rack-02', 'Rack-03'].map((rId) => {
+            <div className={`grid gap-1.5 mb-3 bg-slate-900/80 p-1 rounded-lg border border-slate-800`} style={{ gridTemplateColumns: `repeat(${(racks.length > 0 ? racks : [{rack_id:'Rack-01'},{rack_id:'Rack-02'},{rack_id:'Rack-03'}]).length}, minmax(0, 1fr))` }}>
+              {(racks.length > 0 ? racks.map(r => r.rack_id) : ['Rack-01', 'Rack-02', 'Rack-03']).map((rId) => {
                 const isSel = selectedRackId === rId;
                 const rData = racks.find((r) => r.rack_id === rId);
                 return (
@@ -514,7 +525,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({ hosts, onOpenExport 
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-slate-400 mb-1">Total Facility (kWh):</label>
                   <input
@@ -534,6 +545,17 @@ export const CapacityView: React.FC<CapacityViewProps> = ({ hosts, onOpenExport 
                     required
                     value={logForm.it_equipment_kwh}
                     onChange={(e) => setLogForm({ ...logForm, it_equipment_kwh: parseFloat(e.target.value) })}
+                    className="w-full bg-slate-900 border border-surface-border rounded p-2 text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-400 mb-1">Cooling (kWh):</label>
+                  <input
+                    type="number"
+                    step="1"
+                    required
+                    value={logForm.cooling_kwh}
+                    onChange={(e) => setLogForm({ ...logForm, cooling_kwh: parseFloat(e.target.value) })}
                     className="w-full bg-slate-900 border border-surface-border rounded p-2 text-white focus:outline-none focus:border-cyan-500"
                   />
                 </div>

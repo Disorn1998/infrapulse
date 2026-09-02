@@ -132,6 +132,13 @@ def delete_host(host_id: str, db: Session = Depends(get_db)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Host '{host_id}' not found.",
         )
-    db.delete(host)
-    db.commit()
+    try:
+        db.delete(host)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot delete host '{host_id}': it has linked records that prevent deletion.",
+        )
     return None
