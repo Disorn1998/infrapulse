@@ -26,6 +26,9 @@ class AlertSettingsSummary(BaseModel):
     recipient_email: str = "admin@infrapulse.local"
 
 
+router = APIRouter()
+
+
 @router.get("/rules/summary", response_model=AlertSettingsSummary)
 def get_alert_rules_summary(db: Session = Depends(get_db)):
     """Retrieve summarized threshold values for GUI settings modal."""
