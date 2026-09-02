@@ -10,7 +10,7 @@ import { EmptyState } from './components/EmptyState';
 import { AlertSettingsModal } from './components/AlertSettingsModal';
 import { ExportReportModal } from './components/ExportReportModal';
 import { Host, Metric, FacilityOverview, AiAdvisorResponse } from './types/api';
-import { fetchHosts, fetchHostMetrics, fetchFacilityOverview, fetchAiInsights } from './services/api';
+import { fetchHosts, fetchHostMetrics, fetchFacilityOverview, fetchAiInsights, deleteHost } from './services/api';
 import { Server, AlertCircle, Activity, Zap, Bot } from 'lucide-react';
 
 const REFRESH_INTERVAL_SECONDS = 15;
@@ -124,6 +124,15 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleDeleteHost = async (hostId: string) => {
+    try {
+      await deleteHost(hostId);
+      await loadData(false);
+    } catch (err: any) {
+      alert('Failed to remove host: ' + err.message);
+    }
+  };
+
   const selectedHost = hosts.find((h) => h.id === selectedHostId);
 
   return (
@@ -217,6 +226,7 @@ export const App: React.FC = () => {
                       isSelected={h.id === selectedHostId}
                       latestMetric={latestMetricsMap[h.id]}
                       onSelect={(selected) => setSelectedHostId(selected.id)}
+                      onDelete={(hostId) => handleDeleteHost(hostId)}
                     />
                   ))}
                 </div>

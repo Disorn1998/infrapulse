@@ -1,5 +1,5 @@
 import React from 'react';
-import { Server, Monitor } from 'lucide-react';
+import { Server, Monitor, Trash2 } from 'lucide-react';
 import { Host, Metric } from '../types/api';
 import { formatLastSeen } from '../services/api';
 
@@ -8,6 +8,7 @@ interface HostCardProps {
   isSelected: boolean;
   latestMetric?: Metric | null;
   onSelect: (host: Host) => void;
+  onDelete?: (hostId: string) => void;
 }
 
 export const HostCard: React.FC<HostCardProps> = ({
@@ -15,6 +16,7 @@ export const HostCard: React.FC<HostCardProps> = ({
   isSelected,
   latestMetric,
   onSelect,
+  onDelete,
 }) => {
   const isOnline = host.is_online;
   const isWindows = host.os_type?.toLowerCase().includes('win');
@@ -23,10 +25,17 @@ export const HostCard: React.FC<HostCardProps> = ({
   const ramPct = latestMetric?.ram_percent ?? (host.total_ram_bytes > 0 ? Math.round(((latestMetric?.ram_used_bytes || 0) / host.total_ram_bytes) * 100) : 0);
   const diskPct = latestMetric?.disk_percent ?? 0;
 
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm(`Remove node '${host.hostname}' from monitored inventory?`)) {
+      if (onDelete) onDelete(host.id);
+    }
+  };
+
   return (
     <div
       onClick={() => onSelect(host)}
-      className={`cursor-pointer rounded-xl p-4 transition-all duration-200 border relative overflow-hidden ${
+      className={`cursor-pointer rounded-xl p-4 transition-all duration-200 border relative overflow-hidden group ${
         isSelected
           ? 'bg-surface-card border-cyan-500 shadow-lg shadow-cyan-500/10 ring-1 ring-cyan-500/50'
           : 'bg-surface/60 border-surface-border hover:border-slate-600 hover:bg-surface-card/60'
@@ -46,7 +55,7 @@ export const HostCard: React.FC<HostCardProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-white font-mono tracking-tight truncate max-w-[150px] sm:max-w-[200px]">
+              <h3 className="text-sm font-bold text-white font-mono tracking-tight truncate max-w-[130px] sm:max-w-[180px]">
                 {host.hostname}
               </h3>
               {isSelected && (
@@ -61,7 +70,7 @@ export const HostCard: React.FC<HostCardProps> = ({
           </div>
         </div>
 
-        {/* Dynamic Status Badge & Temperature Pill */}
+        {/* Dynamic Status Badge, Temperature Pill & Delete Action */}
         <div className="flex flex-col items-end gap-1">
           <div className="flex items-center gap-1.5">
             {latestMetric?.cpu_temperature_celsius && (
@@ -91,6 +100,17 @@ export const HostCard: React.FC<HostCardProps> = ({
               ></span>
               {isOnline ? 'Online' : 'Offline'}
             </span>
+
+            {/* Delete button */}
+            {onDelete && (
+              <button
+                onClick={handleDelete}
+                className="opacity-60 group-hover:opacity-100 hover:text-rose-400 p-1 rounded hover:bg-rose-950/40 transition-all text-slate-500"
+                title="Remove node from inventory"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
           <span className="text-[10px] text-slate-500 font-mono">
             {formatLastSeen(host.seconds_since_last_seen)}

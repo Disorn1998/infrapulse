@@ -256,3 +256,21 @@ def trigger_outage_simulation(db: Session = Depends(get_db)):
         action="simulate_outage",
         message="Simulated Feed A blackout: Surviving Feed B sustains 100% cluster load within NEC 80% limit.",
     )
+
+
+@router.post("/reset", response_model=SimulationResult)
+def trigger_reset_simulation(db: Session = Depends(get_db)):
+    """Remove all simulated enterprise cluster nodes from database"""
+    simulated_names = [n["hostname"] for n in SIMULATED_NODES]
+    deleted_count = 0
+    for name in simulated_names:
+        h = db.query(Host).filter(Host.hostname == name).first()
+        if h:
+            db.delete(h)
+            deleted_count += 1
+    db.commit()
+    return SimulationResult(
+        status="success",
+        action="reset_simulation",
+        message=f"Removed {deleted_count} simulated nodes. Restored clean inventory state.",
+    )

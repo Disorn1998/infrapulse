@@ -91,6 +91,23 @@ export async function triggerSimulateStress(): Promise<import('../types/api').Si
   return res.json();
 }
 
+export async function deleteHost(hostId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/hosts/${encodeURIComponent(hostId)}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok && res.status !== 204) {
+    throw new Error(`Failed to delete host '${hostId}': ${res.statusText}`);
+  }
+}
+
+export async function triggerSimulateReset(): Promise<import('../types/api').SimulationResult> {
+  const res = await fetch(`${API_BASE}/simulate/reset`, { method: 'POST' });
+  if (!res.ok) {
+    throw new Error(`Reset simulation failed: ${res.statusText}`);
+  }
+  return res.json();
+}
+
 export async function triggerSimulateOutage(): Promise<import('../types/api').SimulationResult> {
   const res = await fetch(`${API_BASE}/simulate/outage`, { method: 'POST' });
   if (!res.ok) {

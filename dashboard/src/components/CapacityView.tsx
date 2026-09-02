@@ -186,21 +186,21 @@ export const CapacityView: React.FC<CapacityViewProps> = ({ hosts, onOpenExport 
 
           <div className="mt-3">
             <span className="text-base font-bold font-mono text-white truncate block">
-              {forecast?.peak_node_drop.peak_hostname || 'No node load'}
+              {forecast?.peak_node_drop?.peak_hostname || 'No node load'}
             </span>
             <span className="text-xs text-amber-400 font-mono">
-              ({forecast?.peak_node_drop.peak_power_watts.toFixed(1) || 0} W)
+              ({forecast?.peak_node_drop?.peak_power_watts ? forecast.peak_node_drop.peak_power_watts.toFixed(1) : 0} W)
             </span>
           </div>
 
           <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-            If peak node '{forecast?.peak_node_drop.peak_hostname}' trips, cluster load reduces to{' '}
-            {forecast?.peak_node_drop.remaining_load_watts.toFixed(1)}W with {forecast?.peak_node_drop.safety_headroom_watts.toFixed(1)}W utility headroom remaining.
+            If peak node '{forecast?.peak_node_drop?.peak_hostname || 'N/A'}' trips, cluster load reduces to{' '}
+            {forecast?.peak_node_drop?.remaining_load_watts ? forecast.peak_node_drop.remaining_load_watts.toFixed(1) : 0}W with {forecast?.peak_node_drop?.safety_headroom_watts ? forecast.peak_node_drop.safety_headroom_watts.toFixed(1) : 0}W utility headroom remaining.
           </p>
 
           <div className="flex items-center justify-between text-[11px] font-mono text-slate-500 border-t border-surface-border/50 pt-2 mt-3">
             <span>Safety Headroom:</span>
-            <span className="text-purple-300 font-bold">+{forecast?.peak_node_drop.safety_headroom_watts.toFixed(0)} W</span>
+            <span className="text-purple-300 font-bold">+{forecast?.peak_node_drop?.safety_headroom_watts ? forecast.peak_node_drop.safety_headroom_watts.toFixed(0) : 0} W</span>
           </div>
         </div>
       </div>
