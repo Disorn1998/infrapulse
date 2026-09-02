@@ -10,15 +10,6 @@ export async function fetchHosts(): Promise<Host[]> {
   return res.json();
 }
 
-export async function deleteHost(hostId: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/hosts/${encodeURIComponent(hostId)}`, {
-    method: 'DELETE',
-  });
-  if (!res.ok) {
-    throw new Error(`Failed to delete host: ${res.statusText}`);
-  }
-}
-
 export async function fetchHostMetrics(hostId: string, range: string = '1h'): Promise<Metric[]> {
   const res = await fetch(`${API_BASE}/metrics?host=${encodeURIComponent(hostId)}&range=${range}&limit=500`);
   if (!res.ok) {
