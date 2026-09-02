@@ -3,7 +3,6 @@ version: "1"
 databases:
   - name: infrapulse-db
     databaseName: infrapulse
-    user: postgres
     plan: free
     region: singapore
 
