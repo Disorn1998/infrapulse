@@ -9,7 +9,6 @@
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Cloud 24/7](https://img.shields.io/badge/Cloud_Deploy-Render.com-46E3B7.svg?style=for-the-badge&logo=render&logoColor=black)](https://infrapulse-0ft2.onrender.com/)
 
-**🌐 Live Public Demo URL:** [https://membership-guarantee-forgotten-div.trycloudflare.com](https://membership-guarantee-forgotten-div.trycloudflare.com/)  
 **🚀 24/7 Cloud Production Dashboard:** [https://infrapulse-0ft2.onrender.com/](https://infrapulse-0ft2.onrender.com/)  
 **📖 Comprehensive User Manuals:** [🇹🇭 คู่มือการใช้งานภาษาไทย (Thai)](https://github.com/Disorn1998/infrapulse/blob/main/docs/USER_MANUAL_TH.md) | [🇬🇧 User & Operations Manual (English)](https://github.com/Disorn1998/infrapulse/blob/main/docs/USER_MANUAL_EN.md)
 
