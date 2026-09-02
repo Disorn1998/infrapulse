@@ -10,9 +10,9 @@ services:
     dockerfilePath: backend/Dockerfile
     envVars:
       - key: DATABASE_URL
-        value: postgresql://crypto_user:0wEJtIJYnBDbriQVCo8mrWoaZYoxFzWm@dpg-dab6qrnavr4c73f00ga0-a/crypto_production_6t4l
+        sync: false  # Set via Render Dashboard → Environment Variables
       - key: AGENT_SECRET_TOKEN
-        value: infrapulse_secret_token_change_in_production
+        sync: false  # Set via Render Dashboard → Environment Variables
       - key: PROJECT_NAME
         value: InfraPulse
       - key: ENVIRONMENT
@@ -24,8 +24,8 @@ services:
       - key: SMTP_PORT
         value: "587"
       - key: SMTP_USER
-        value: disorn.jp@gmail.com
+        sync: false  # Set via Render Dashboard → Environment Variables
       - key: SMTP_PASSWORD
-        value: dnaybegtnxmgrolm
+        sync: false  # Set via Render Dashboard → Environment Variables
       - key: DEFAULT_ALERT_RECIPIENT
-        value: disorn.jp@gmail.com
+        sync: false  # Set via Render Dashboard → Environment Variables

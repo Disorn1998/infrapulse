@@ -34,12 +34,12 @@ import {
 } from '../services/api';
 
 interface CapacityViewProps {
-  hosts: Host[];
+  hosts?: Host[];
   onOpenExport?: () => void;
   onRefresh?: () => void;
 }
 
-export const CapacityView: React.FC<CapacityViewProps> = ({ hosts, onOpenExport }) => {
+export const CapacityView: React.FC<CapacityViewProps> = ({ onOpenExport }) => {
   const [forecast, setForecast] = useState<CapacityForecast | null>(null);
   const [powerLogs, setPowerLogs] = useState<FacilityPowerLog[]>([]);
   const [racks, setRacks] = useState<RackSummary[]>([]);
@@ -373,36 +373,9 @@ export const CapacityView: React.FC<CapacityViewProps> = ({ hosts, onOpenExport 
                 );
               })
             ) : (
-              hosts.map((h, idx) => {
-                const cfg = h.power_config;
-                const uStart = cfg?.rack_unit_start || idx * 2 + 1;
-                const uHeight = cfg?.rack_unit_height || 2;
-                const feed = cfg?.pdu?.feed || (idx % 2 === 0 ? 'A' : 'B');
-
-                return (
-                  <div
-                    key={h.id}
-                    className="bg-surface-card border border-slate-700/80 rounded px-2.5 py-1.5 flex items-center justify-between hover:border-cyan-500/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-slate-500 font-bold">
-                        U{uStart.toString().padStart(2, '0')}-U{(uStart + uHeight - 1).toString().padStart(2, '0')}
-                      </span>
-                      <span className="text-slate-200 font-bold truncate">{h.hostname}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
-                          feed === 'A' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-indigo-500/20 text-indigo-400'
-                        }`}
-                      >
-                        Feed {feed}
-                      </span>
-                      <span className="text-slate-400">{cfg?.rated_watts || 150}W</span>
-                    </div>
-                  </div>
-                );
-              })
+              <div className="flex items-center justify-center h-24 text-slate-500 italic">
+                No servers provisioned in this rack.
+              </div>
             )}
 
             {/* Empty Rack Filler Slot */}

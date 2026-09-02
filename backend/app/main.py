@@ -57,44 +57,6 @@ app = FastAPI(
 from sqlalchemy import text
 from app.core.database import engine
 
-@app.on_event("startup")
-def migrate_db():
-    with engine.connect() as conn:
-        try:
-            conn.execute(text("ALTER TABLE metrics ADD COLUMN cpu_temperature_celsius FLOAT DEFAULT 42.0;"))
-            conn.commit()
-            print("Added cpu_temperature_celsius column")
-        except Exception as e:
-            print(f"Column cpu_temperature_celsius probably exists: {e}")
-            
-        try:
-            conn.execute(text("ALTER TABLE metrics ADD COLUMN load_1m FLOAT;"))
-            conn.execute(text("ALTER TABLE metrics ADD COLUMN load_5m FLOAT;"))
-            conn.execute(text("ALTER TABLE metrics ADD COLUMN load_15m FLOAT;"))
-            conn.commit()
-            print("Added load columns")
-        except Exception as e:
-            print(f"Load columns probably exist: {e}")
-
-@app.get("/api/v1/fix-db")
-def manual_fix_db():
-    results = []
-    with engine.connect() as conn:
-        try:
-            conn.execute(text("ALTER TABLE metrics ADD COLUMN cpu_temperature_celsius FLOAT DEFAULT 42.0;"))
-            conn.commit()
-            results.append("Added cpu_temp")
-        except Exception as e:
-            results.append(f"cpu_temp error: {e}")
-        try:
-            conn.execute(text("ALTER TABLE metrics ADD COLUMN load_1m FLOAT;"))
-            conn.execute(text("ALTER TABLE metrics ADD COLUMN load_5m FLOAT;"))
-            conn.execute(text("ALTER TABLE metrics ADD COLUMN load_15m FLOAT;"))
-            conn.commit()
-            results.append("Added loads")
-        except Exception as e:
-            results.append(f"loads error: {e}")
-    return {"results": results}
 
 # Configure CORS
 app.add_middleware(
@@ -106,12 +68,21 @@ app.add_middleware(
 )
 
 
-import traceback
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import JSONResponse
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
-    return PlainTextResponse(str(traceback.format_exc()), status_code=500)
+    logger.error(f"Unhandled server error: {exc}", exc_info=True)
+    if settings.ENVIRONMENT.lower() == "production":
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal Server Error. Please contact data center administrator."},
+        )
+    import traceback
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc), "traceback": traceback.format_exc().splitlines()},
+    )
 
 
 @app.get("/health", tags=["System Health"], status_code=status.HTTP_200_OK)
