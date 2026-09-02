@@ -45,7 +45,6 @@ if (-not (Test-Path $InstallDir)) {
 Write-Host "[*] Downloading agent files from GitHub repository..." -ForegroundColor Yellow
 Invoke-WebRequest -Uri "$GithubRaw/monitor_agent.py" -OutFile "$InstallDir\monitor_agent.py" -UseBasicParsing
 Invoke-WebRequest -Uri "$GithubRaw/collector.py" -OutFile "$InstallDir\collector.py" -UseBasicParsing
-Invoke-WebRequest -Uri "$GithubRaw/transmitter.py" -OutFile "$InstallDir\transmitter.py" -UseBasicParsing
 Invoke-WebRequest -Uri "$GithubRaw/buffer.py" -OutFile "$InstallDir\buffer.py" -UseBasicParsing
 
 # 5. Create config.json

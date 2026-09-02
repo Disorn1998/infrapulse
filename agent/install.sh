@@ -60,7 +60,6 @@ cd "$INSTALL_DIR"
 echo "[*] Downloading InfraPulse agent modules directly from GitHub..."
 curl -sSL "$GITHUB_RAW/monitor_agent.py" -o "$INSTALL_DIR/monitor_agent.py"
 curl -sSL "$GITHUB_RAW/collector.py" -o "$INSTALL_DIR/collector.py"
-curl -sSL "$GITHUB_RAW/transmitter.py" -o "$INSTALL_DIR/transmitter.py"
 curl -sSL "$GITHUB_RAW/buffer.py" -o "$INSTALL_DIR/buffer.py"
 
 # 5. Create Python Virtual Environment & Install psutil/requests
