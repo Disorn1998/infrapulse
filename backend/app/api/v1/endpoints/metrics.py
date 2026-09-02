@@ -1,3 +1,4 @@
+import asyncio
 from typing import List, Optional
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -6,6 +7,8 @@ from sqlalchemy import desc
 
 from app.core.database import get_db
 from app.core.security import verify_agent_token
+from app.core.rate_limit import metric_ingest_rate_limiter
+from app.core.websocket import ws_manager
 from app.models.host import Host
 from app.models.metric import Metric
 from app.models.power import PowerConfig
@@ -51,6 +54,7 @@ def ingest_metric(
     metric_in: MetricIngest,
     db: Session = Depends(get_db),
     _: str = Depends(verify_agent_token),
+    __: None = Depends(metric_ingest_rate_limiter),
 ):
     """
     Ingest real-time host telemetry snapshot from Python agent.
@@ -58,6 +62,7 @@ def ingest_metric(
     Security:
         Requires valid `X-Agent-Token` HTTP header matching backend configuration.
         Unauthorized requests receive 401 Unauthorized.
+        Protected by Sliding Window Rate Limiting (240 req/min).
     """
     clean_hostname = metric_in.hostname.strip()
     host_id = clean_hostname.lower()
@@ -147,6 +152,24 @@ def ingest_metric(
     db.commit()
     db.refresh(metric_entry)
 
+    # 5. Broadcast live telemetry update via WebSockets
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(ws_manager.broadcast({
+                "event": "telemetry_update",
+                "host_id": host.id,
+                "hostname": host.hostname,
+                "cpu_percent": metric_in.cpu_percent,
+                "ram_percent": metric_in.ram_percent,
+                "disk_percent": metric_in.disk_percent,
+                "calculated_power_watts": computed_power,
+                "cpu_temperature_celsius": metric_entry.cpu_temperature_celsius,
+                "timestamp": server_now.isoformat(),
+            }))
+    except Exception:
+        pass
+
     return metric_entry
 
 
@@ -155,6 +178,7 @@ def ingest_metrics_batch(
     metrics_in: List[MetricIngest],
     db: Session = Depends(get_db),
     _: str = Depends(verify_agent_token),
+    __: None = Depends(metric_ingest_rate_limiter),
 ):
     """
     Ingest a batch of historical telemetry snapshots flushed from an agent's offline SQLite buffer.

@@ -10,7 +10,7 @@ import { EmptyState } from './components/EmptyState';
 import { AlertSettingsModal } from './components/AlertSettingsModal';
 import { ExportReportModal } from './components/ExportReportModal';
 import { Host, Metric, FacilityOverview, AiAdvisorResponse } from './types/api';
-import { fetchHosts, fetchHostMetrics, fetchFacilityOverview, fetchAiInsights, deleteHost } from './services/api';
+import { fetchHosts, fetchHostMetrics, fetchFacilityOverview, fetchAiInsights, deleteHost, getWebSocketUrl } from './services/api';
 import { Server, AlertCircle, Activity, Zap, Bot } from 'lucide-react';
 
 const REFRESH_INTERVAL_SECONDS = 15;
@@ -27,6 +27,7 @@ export const App: React.FC = () => {
   const [countdown, setCountdown] = useState<number>(REFRESH_INTERVAL_SECONDS);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [isWsConnected, setIsWsConnected] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   // Modals state
@@ -133,6 +134,85 @@ export const App: React.FC = () => {
     return () => clearInterval(timer);
   }, [loadData, loadSelectedMetrics, selectedHostId, timeRange]);
 
+  // WebSocket live telemetry subscription with resilient reconnection
+  useEffect(() => {
+    let ws: WebSocket | null = null;
+    let reconnectTimer: any = null;
+    let pingTimer: any = null;
+
+    const connect = () => {
+      try {
+        const url = getWebSocketUrl();
+        ws = new WebSocket(url);
+
+        ws.onopen = () => {
+          setIsWsConnected(true);
+          pingTimer = setInterval(() => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+              ws.send('ping');
+            }
+          }, 25000);
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.event === 'telemetry_update') {
+              // Instantaneous update for node cards
+              setLatestMetricsMap((prev) => ({
+                ...prev,
+                [data.host_id]: {
+                  id: Date.now(),
+                  host_id: data.host_id,
+                  timestamp: data.timestamp,
+                  cpu_percent: data.cpu_percent,
+                  ram_percent: data.ram_percent,
+                  disk_percent: data.disk_percent,
+                  calculated_power_watts: data.calculated_power_watts,
+                  cpu_temperature_celsius: data.cpu_temperature_celsius,
+                } as Metric,
+              }));
+
+              if (selectedHostId === data.host_id) {
+                loadSelectedMetrics(data.host_id, timeRange);
+              }
+              // Refresh facility overview in background
+              fetchFacilityOverview().then((f) => setFacility(f)).catch(() => {});
+            } else if (data.event === 'simulation_updated' || data.event === 'batch_telemetry_update') {
+              loadData(true);
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+        };
+
+        ws.onclose = () => {
+          setIsWsConnected(false);
+          clearInterval(pingTimer);
+          reconnectTimer = setTimeout(connect, 4000);
+        };
+
+        ws.onerror = () => {
+          ws?.close();
+        };
+      } catch (err) {
+        setIsWsConnected(false);
+        reconnectTimer = setTimeout(connect, 4000);
+      }
+    };
+
+    connect();
+
+    return () => {
+      clearTimeout(reconnectTimer);
+      clearInterval(pingTimer);
+      if (ws) {
+        ws.onclose = null;
+        ws.close();
+      }
+    };
+  }, [selectedHostId, timeRange, loadData, loadSelectedMetrics]);
+
   const handleManualRefresh = () => {
     loadData(false);
     if (selectedHostId) {
@@ -157,6 +237,7 @@ export const App: React.FC = () => {
         facility={facility}
         countdown={countdown}
         isRefreshing={isRefreshing}
+        isWsConnected={isWsConnected}
         onManualRefresh={handleManualRefresh}
         onOpenSettings={() => setIsAlertModalOpen(true)}
         onOpenExport={() => setIsExportModalOpen(true)}

@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
@@ -5,6 +6,8 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.rate_limit import simulation_rate_limiter
+from app.core.websocket import ws_manager
 from app.models.host import Host
 from app.models.metric import Metric
 from app.models.power import PowerConfig
@@ -198,6 +201,18 @@ def trigger_cluster_simulation(db: Session = Depends(get_db)):
         db.add(metric)
 
     db.commit()
+
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(ws_manager.broadcast({
+                "event": "simulation_updated",
+                "action": "provision_cluster",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }))
+    except Exception:
+        pass
+
     return SimulationResult(
         status="success",
         action="provision_cluster",
@@ -206,7 +221,10 @@ def trigger_cluster_simulation(db: Session = Depends(get_db)):
 
 
 @router.post("/stress", response_model=SimulationResult)
-def trigger_stress_simulation(db: Session = Depends(get_db)):
+def trigger_stress_simulation(
+    db: Session = Depends(get_db),
+    _: None = Depends(simulation_rate_limiter),
+):
     """Spike cluster compute to 92% CPU, optimizing Dynamic PUE down to ~1.19"""
     now = datetime.now(timezone.utc)
     for node in SIMULATED_NODES:
@@ -235,6 +253,18 @@ def trigger_stress_simulation(db: Session = Depends(get_db)):
             )
             db.add(metric)
     db.commit()
+
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(ws_manager.broadcast({
+                "event": "simulation_updated",
+                "action": "power_stress",
+                "timestamp": now.isoformat(),
+            }))
+    except Exception:
+        pass
+
     return SimulationResult(
         status="success",
         action="power_stress",
@@ -243,7 +273,10 @@ def trigger_stress_simulation(db: Session = Depends(get_db)):
 
 
 @router.post("/outage", response_model=SimulationResult)
-def trigger_outage_simulation(db: Session = Depends(get_db)):
+def trigger_outage_simulation(
+    db: Session = Depends(get_db),
+    _: None = Depends(simulation_rate_limiter),
+):
     """Simulate total single-feed outage assessment and verify N+1 safety margin"""
     now = datetime.now(timezone.utc)
     for node in SIMULATED_NODES:
@@ -251,6 +284,18 @@ def trigger_outage_simulation(db: Session = Depends(get_db)):
         if host:
             host.last_seen = now
     db.commit()
+
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(ws_manager.broadcast({
+                "event": "simulation_updated",
+                "action": "simulate_outage",
+                "timestamp": now.isoformat(),
+            }))
+    except Exception:
+        pass
+
     return SimulationResult(
         status="success",
         action="simulate_outage",
@@ -259,7 +304,10 @@ def trigger_outage_simulation(db: Session = Depends(get_db)):
 
 
 @router.post("/reset", response_model=SimulationResult)
-def trigger_reset_simulation(db: Session = Depends(get_db)):
+def trigger_reset_simulation(
+    db: Session = Depends(get_db),
+    _: None = Depends(simulation_rate_limiter),
+):
     """Remove all simulated enterprise cluster nodes from database"""
     simulated_names = [n["hostname"] for n in SIMULATED_NODES]
     deleted_count = 0
@@ -273,8 +321,21 @@ def trigger_reset_simulation(db: Session = Depends(get_db)):
             except Exception:
                 db.rollback()
     db.commit()
+
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(ws_manager.broadcast({
+                "event": "simulation_updated",
+                "action": "reset_simulation",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }))
+    except Exception:
+        pass
+
     return SimulationResult(
         status="success",
         action="reset_simulation",
         message=f"Removed {deleted_count} simulated nodes. Restored clean inventory state.",
     )
+

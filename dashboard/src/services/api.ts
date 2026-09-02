@@ -164,6 +164,18 @@ export function getExportCsvUrl(): string {
   return `${API_BASE}/facility/export/audit-csv`;
 }
 
+export function getWebSocketUrl(): string {
+  const base = API_BASE;
+  if (base.startsWith('http://')) {
+    return base.replace('http://', 'ws://') + '/ws/telemetry';
+  }
+  if (base.startsWith('https://')) {
+    return base.replace('https://', 'wss://') + '/ws/telemetry';
+  }
+  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${proto}//${window.location.host}${base}/ws/telemetry`;
+}
+
 // Utility: Format bytes into human readable binary units
 export function formatBytes(bytes?: number | null, decimals = 1): string {
   if (bytes === undefined || bytes === null || isNaN(bytes) || bytes === 0) return '0 B';

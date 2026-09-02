@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import metrics, hosts, facility, alerts, pdus, ai, simulate
+from app.api.v1.endpoints import metrics, hosts, facility, alerts, pdus, ai, simulate, ws
 
 api_router = APIRouter()
 
@@ -10,3 +10,4 @@ api_router.include_router(facility.router, prefix="/facility", tags=["Data Cente
 api_router.include_router(alerts.router, prefix="/alerts", tags=["Threshold Alerts & State Machine"])
 api_router.include_router(ai.router, prefix="/ai", tags=["AI Infrastructure Advisor & Diagnostics"])
 api_router.include_router(simulate.router, prefix="/simulate", tags=["Interactive Simulation Suite"])
+api_router.include_router(ws.router, prefix="/ws", tags=["Real-Time WebSocket Stream"])

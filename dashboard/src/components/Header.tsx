@@ -6,6 +6,7 @@ interface HeaderProps {
   facility?: FacilityOverview | null;
   countdown: number;
   isRefreshing: boolean;
+  isWsConnected?: boolean;
   onManualRefresh: () => void;
   onOpenSettings?: () => void;
   onOpenExport?: () => void;
@@ -15,6 +16,7 @@ export const Header: React.FC<HeaderProps> = ({
   facility,
   countdown,
   isRefreshing,
+  isWsConnected = false,
   onManualRefresh,
   onOpenSettings,
   onOpenExport,
@@ -102,6 +104,23 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="hidden sm:inline">Alert Rules</span>
           </button>
         )}
+
+        {/* WebSocket Real-Time Stream Status */}
+        <div
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-mono transition-all ${
+            isWsConnected
+              ? 'bg-cyan-950/40 border-cyan-500/40 text-cyan-300'
+              : 'bg-slate-900 border-slate-800 text-slate-500'
+          }`}
+          title={isWsConnected ? 'WebSocket live real-time push active' : 'Polling mode active'}
+        >
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${
+              isWsConnected ? 'bg-cyan-400 animate-ping' : 'bg-slate-500'
+            }`}
+          ></span>
+          <span className="hidden md:inline">{isWsConnected ? 'Live Stream' : 'Polling'}</span>
+        </div>
 
         {/* Refresh Timer & Manual Action */}
         <div className="flex items-center gap-2 bg-surface-card border border-surface-border px-3 py-1 rounded-lg text-xs font-mono text-slate-300">

@@ -76,7 +76,12 @@ def calculate_capacity_forecast(db: Session) -> CapacityForecastResponse:
     )
 
     # 3. Time-Series Trend & Linear Regression using REAL historical data
-    day_bucket = func.date_trunc('day', Metric.timestamp)
+    bind = db.get_bind()
+    is_sqlite = bind is not None and "sqlite" in bind.dialect.name
+    if is_sqlite:
+        day_bucket = func.strftime('%Y-%m-%d', Metric.timestamp)
+    else:
+        day_bucket = func.date_trunc('day', Metric.timestamp)
     
     # Get average IT power per host per day, then sum them up per day in python
     daily_host_avg = (
@@ -95,10 +100,16 @@ def calculate_capacity_forecast(db: Session) -> CapacityForecastResponse:
 
     daily_totals: Dict[datetime, float] = {}
     for row in daily_host_avg:
-        day_ts, host_id, avg_power = row
-        # Convert to UTC if needed
-        if day_ts.tzinfo is None:
-            day_ts = day_ts.replace(tzinfo=timezone.utc)
+        day_raw, host_id, avg_power = row
+        if isinstance(day_raw, str):
+            try:
+                day_ts = datetime.strptime(day_raw[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            except Exception:
+                day_ts = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        elif isinstance(day_raw, datetime):
+            day_ts = day_raw if day_raw.tzinfo else day_raw.replace(tzinfo=timezone.utc)
+        else:
+            day_ts = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
             
         if day_ts not in daily_totals:
             daily_totals[day_ts] = 0.0

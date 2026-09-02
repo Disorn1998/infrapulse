@@ -30,9 +30,9 @@ export const ExportReportModal: React.FC<ExportReportModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in print:p-0 print:bg-white print:static">
-      <div className="relative w-full max-w-2xl bg-surface-card border border-surface-border rounded-2xl shadow-2xl overflow-hidden print:border-none print:shadow-none print:w-full print:max-w-none print:text-black">
+      <div className="relative w-full max-w-2xl bg-surface-card border border-surface-border rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col print:max-h-none print:border-none print:shadow-none print:w-full print:max-w-none print:text-black">
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-surface-border bg-slate-900/60 print:hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-surface-border bg-slate-900/60 print:hidden shrink-0">
           <div className="flex items-center gap-2 text-cyan-400">
             <FileSpreadsheet className="w-5 h-5 text-cyan-400" />
             <h2 className="text-base font-bold font-mono text-white tracking-wide">
@@ -48,7 +48,7 @@ export const ExportReportModal: React.FC<ExportReportModalProps> = ({
         </div>
 
         {/* Report Content */}
-        <div className="p-6 sm:p-8 space-y-6 print:p-6 print:space-y-4">
+        <div className="p-6 sm:p-8 space-y-6 overflow-y-auto flex-1 print:p-6 print:space-y-4 print:overflow-visible">
           {/* Executive Header & BOI Badge */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-surface-border pb-6 print:border-slate-300">
             <div>

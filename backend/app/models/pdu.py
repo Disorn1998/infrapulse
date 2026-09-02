@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Float, BigInteger, DateTime, func
+from sqlalchemy import Column, String, Float, BigInteger, Integer, DateTime, func
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -11,7 +11,7 @@ class PDU(Base):
     """
     __tablename__ = "pdu"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
     name = Column(String(50), nullable=False, unique=True, index=True)  # e.g., 'PDU-A1', 'PDU-B1'
     feed = Column(String(1), nullable=False)                            # 'A' | 'B'
     rack_name = Column(String(50), nullable=True, default="Rack-01")

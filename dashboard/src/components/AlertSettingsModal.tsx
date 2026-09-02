@@ -61,7 +61,7 @@ export const AlertSettingsModal: React.FC<AlertSettingsModalProps> = ({ isOpen, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-lg bg-surface-card border border-surface-border rounded-2xl shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-lg bg-surface-card border border-surface-border rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-surface-border bg-slate-900/60">
           <div className="flex items-center gap-2 text-cyan-400">
@@ -79,7 +79,7 @@ export const AlertSettingsModal: React.FC<AlertSettingsModalProps> = ({ isOpen, 
         </div>
 
         {/* Modal Body Form */}
-        <form onSubmit={handleSave} className="p-6 space-y-6">
+        <form onSubmit={handleSave} className="p-6 space-y-6 overflow-y-auto flex-1">
           {errorMsg && (
             <div className="flex items-center gap-2 p-3 text-xs text-rose-300 bg-rose-950/40 border border-rose-800 rounded-xl">
               <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />

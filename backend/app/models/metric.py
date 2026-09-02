@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Float, BigInteger, DateTime, ForeignKey, Index, func
+from sqlalchemy import Column, String, Float, BigInteger, Integer, DateTime, ForeignKey, Index, func
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -8,7 +8,7 @@ class Metric(Base):
     Metric Table: High-frequency time-series telemetry data collected by agents.
     
     Attributes:
-        id: BIGSERIAL primary key.
+        id: BIGSERIAL primary key (BigInteger in Postgres, Integer rowid in SQLite).
         timestamp: TIMESTAMPTZ sampled on agent side.
         received_at: TIMESTAMPTZ server-side ingress arrival timestamp (used for clock skew & ingestion lag analysis).
         
@@ -16,7 +16,7 @@ class Metric(Base):
     """
     __tablename__ = "metrics"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
     host_id = Column(String(100), ForeignKey("hosts.id", ondelete="CASCADE"), nullable=False, index=True)
     
     # Time-series timestamps with timezone
