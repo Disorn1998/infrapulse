@@ -54,5 +54,8 @@ class MetricResponse(BaseModel):
     uptime_seconds: Optional[int] = None
     calculated_power_watts: Optional[float] = None
     cpu_temperature_celsius: Optional[float] = 42.0
+    load_1m: Optional[float] = None
+    load_5m: Optional[float] = None
+    load_15m: Optional[float] = None
 
     model_config = ConfigDict(from_attributes=True)

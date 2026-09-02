@@ -64,6 +64,14 @@ app.add_middleware(
 )
 
 
+import traceback
+from fastapi.responses import PlainTextResponse
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    return PlainTextResponse(str(traceback.format_exc()), status_code=500)
+
+
 @app.get("/health", tags=["System Health"], status_code=status.HTTP_200_OK)
 def health_check(db: Session = Depends(get_db)):
     """
