@@ -83,38 +83,48 @@ curl -sSL https://raw.githubusercontent.com/Disorn1998/infrapulse/main/agent/ins
 
 ---
 
-## 🖥️ 4. Dashboard Features & Operations
+## 🖥️ 4. How to Read Metrics & Dashboard Usage
 
-### 1. 🎮 Interactive Demo Sandbox (Top Bar)
-* **`🚀 Simulate Cluster`:** Provisons 5 enterprise nodes distributed across **`Rack-01`**, **`Rack-02`**, and **`Rack-03`**.
-* **`⚡ Spike Load (PUE Curve)`:** Simulates 92% CPU surge demonstrating thermodynamic Fixed Overhead Dilution.
-* **`🔌 Feed A Outage`:** Simulates single-feed failure and validates N+1 failover headroom.
+The dashboard is structured into 3 main tabs, covering both Software (IT) and Hardware/Electrical (Facility) dimensions.
 
-### 2. 🖥️ Real-Time Telemetry Tab
-* **Node Cards:** Live Online/Offline status, uptime counter, and **`🌡️ XX.X°C`** thermal pill (Cyan/Green/Amber/Red).
-* **Metric Gauges:** Real-time CPU %, RAM %, and Disk % utilization.
-* **Dual-Stream Network Chart:** Independent green line for RX (incoming) and orange line for TX (outgoing) throughput.
+### 📊 Tab 1: Real-Time Telemetry (Live Server Status)
+This interface provides per-second health monitoring of individual server nodes.
+* **How to Read Status:** Healthy servers show `🟢 Online`. If network or power is lost, it changes to `🔴 Offline`.
+* **How to Read Thermal Badges:** Each node card features a **🌡️ XX.X°C** indicator:
+  * 🟦 **Cyan (< 45°C):** Cool (Idle workload).
+  * 🟩 **Green (45-65°C):** Optimal operating temperature.
+  * 🟧 **Amber (65-75°C):** Elevated temperature; monitor for airflow issues.
+  * 🟥 **Red (> 75°C):** Thermal Hotspot; high risk of CPU thermal throttling.
+* **Network Chart (RX/TX):** The green line represents RX (incoming/download) and the orange line represents TX (outgoing/upload) throughput.
 
-### 3. ⚡ Capacity & Power Intelligence Tab
-* **Facility Capacity Gauge:** Electrical load against rated breaker limits (10,000 W).
-* **Capacity Runout Forecast:** Linear regression trajectory and estimated days to exhaustion.
-* **Multi-Rack Elevation & Thermal Heatmap Matrix:**
-  * Interactive switcher between **`Rack-01 (Web & App)`**, **`Rack-02 (Database)`**, and **`Rack-03 (AI/HPC GPU & Storage)`**.
-  * Visual thermal heatmap per rack unit slot (U1–U42).
-* **Historical Monthly Energy & PUE Audit Log:** Audit bar chart with **"+ Add Monthly Audit"** and **"Export DCIM Audit Report"** buttons.
+### ⚡ Tab 2: Capacity & Power Intelligence (DCIM Core)
+This is the core facility management tab for monitoring the entire Data Center room.
+* **How to Read Dynamic PUE Index (Top left):**
+  * **PUE (Power Usage Effectiveness)** measures electrical efficiency. Closer to `1.0` is better.
+  * The **Thailand BOI** standard for green data center tax incentives is **$\le 1.30$**.
+  * *Note:* During low IT workload (idle) periods, PUE will naturally spike higher because fixed facility overhead (cooling, lighting) remains constant while IT power drops.
+* **How to Read N+1 Power Redundancy:**
+  * **HEALTHY:** Means if one power feed (e.g., Feed A) fails, the surviving Feed B can safely carry the entire room's load without tripping the breaker (safe under the NEC 80% continuous load rule).
+* **How to Read Predictive Power Growth (Capacity Runout):**
+  * The chart plots a Linear Regression slope (Watts per day) based on historical usage.
+  * **Days to Exhaustion:** The AI automatically projects how many days until the 100% breaker capacity is hit, allowing you to plan phase expansions and budget approvals proactively.
+* **How to use Multi-Rack Thermal Heatmap:**
+  * Click to switch between **`Rack-01`**, **`Rack-02`**, or **`Rack-03`**.
+  * Look at the U-slots (U1 - U42) to see where servers are physically installed, which PDU Feed they draw from (A or B), and visually identify thermal hotspots in the rack via color-coded badges.
+* **How to record Historical Monthly Audits:**
+  * Click **"+ Add Monthly Audit"** to log your monthly utility bill (kWh) and IT equipment kWh.
+  * The system calculates and securely stores the monthly PUE history in PostgreSQL, generating long-term compliance reports for ISO or BOI audits.
 
-### 4. 🤖 AI Infrastructure Copilot Tab
-* **DCIM Health Score (0–100):** Comprehensive facility health evaluation.
-* **Executive Summary:** Plain-language executive overview.
-* **Smart Insight Cards:** Actionable engineering recommendations for hotspot cooling, phase balancing, and PUE optimization.
+### 🤖 Tab 3: AI Infrastructure Copilot
+Stop manually interpreting charts—let the AI summarize the facility health!
+* **DCIM Health Score (0-100):** The overall health grade of your data center.
+* **How to Read Smart Insight Cards:**
+  * The AI Engine generates dynamic, real-time alerts (CRITICAL, WARNING, INFO) based on the database telemetry.
+  * *Example:* If too many servers are plugged into Feed A, the AI detects the load delta and issues an *"A/B Dual-Feed Power Imbalance"* warning, recommending you migrate plugs to Feed B to restore 50/50 balance.
 
-### 5. ⚙️ Alert Rules Settings (Header Gear Button)
-* Interactive sliders for **CPU %, RAM %, Disk %, and Thermal Hotspot (°C)** thresholds.
-* Live notification email configuration with instant persistence.
-
-### 6. 📑 Export Audit Report (Header Export Button)
-* **Download CSV Raw Dataset:** Full CSV export of node inventory, power draw, and historical monthly audits.
-* **Print Executive Summary:** Printable audit sheet with **Thailand BOI Compliance Certificate ($\text{PUE} \le 1.30$)**.
+### ⚙️ Header Controls (Alerts & Exports)
+* **⚙️ Alert Rules:** Click the gear icon to adjust threshold sliders for CPU, RAM, Disk, and Temperature. If a threshold is breached, the system sends an automated Email Notification (with a 15-minute debounce to prevent spam).
+* **📑 Export Audit:** Click the spreadsheet icon to instantly download a **.CSV** containing your raw server inventory, power telemetry, and monthly PUE audits for Excel reporting.
 
 ---
 

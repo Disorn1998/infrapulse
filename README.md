@@ -52,6 +52,34 @@
 
 ---
 
+## 📊 How to Read Metrics & Dashboard Usage
+
+The dashboard provides real-time facility intelligence driven completely by live database telemetry. 
+
+### 1. ⚡ Capacity & Power Intelligence (DCIM Core)
+* **Dynamic PUE Index:** Measures electrical efficiency. The **Thailand BOI** standard for green data center tax incentives is **$\le 1.30$**. During low IT workload periods, PUE will naturally spike higher because fixed facility overhead (cooling, lighting) remains constant while IT power drops.
+* **N+1 Power Redundancy:** A **HEALTHY** status means if one power feed (e.g., Feed A) fails, the surviving Feed B can safely carry the entire room's load without tripping the breaker (safe under the NEC 80% continuous load rule).
+* **Predictive Power Growth (Capacity Runout):** AI calculates a Linear Regression slope (Watts per day) based on historical usage and automatically projects **Days to Exhaustion** (how many days until the 100% breaker capacity is hit).
+* **Historical Monthly Audits:** Click **"+ Add Monthly Audit"** to log your monthly utility bill. The system securely stores the monthly PUE history in PostgreSQL for long-term ISO or BOI audit compliance.
+
+### 2. 🏢 Multi-Rack Elevation & Thermal Heatmap Matrix
+* Click to switch between **`Rack-01`**, **`Rack-02`**, or **`Rack-03`**.
+* Look at the U-slots (U1 - U42) to visually identify thermal hotspots in the rack via color-coded badges:
+  * 🟦 **Cyan (< 45°C):** Cool (Idle workload).
+  * 🟩 **Green (45-65°C):** Optimal operating temperature.
+  * 🟧 **Amber (65-75°C):** Elevated temperature; monitor for airflow issues.
+  * 🟥 **Red (> 75°C):** Thermal Hotspot; high risk of CPU thermal throttling.
+
+### 3. 🤖 AI Infrastructure Copilot
+* Stop interpreting charts manually. The AI Engine evaluates a **DCIM Health Score (0-100)** and generates dynamic, real-time alerts (CRITICAL, WARNING, INFO).
+* *Example:* If too many servers are plugged into Feed A, the AI detects the load delta and issues an *"A/B Dual-Feed Power Imbalance"* warning, recommending you migrate plugs to Feed B to restore 50/50 balance.
+
+### 4. ⚙️ Header Controls (Alerts & Exports)
+* **⚙️ Alert Rules:** Adjust threshold sliders for CPU, RAM, Disk, and Temperature. The system sends an automated Email Notification (with a 15-minute debounce) when a threshold is breached.
+* **📑 Export Audit:** Instantly download a **.CSV** containing your raw server inventory, power telemetry, and monthly PUE audits.
+
+---
+
 ## 📌 Motivation & The Real-World Engineering Problem
 
 ### The Problem in Enterprise Edge & Small Server Rooms
