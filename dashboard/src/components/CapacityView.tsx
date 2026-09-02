@@ -21,23 +21,29 @@ import {
   ShieldCheck,
   RefreshCw,
   Trash2,
+  FileSpreadsheet,
+  Thermometer,
 } from 'lucide-react';
-import { CapacityForecast, FacilityPowerLog, Host } from '../types/api';
+import { CapacityForecast, FacilityPowerLog, Host, RackSummary } from '../types/api';
 import {
   fetchCapacityForecast,
   fetchPowerLogs,
   createPowerLog,
   deletePowerLog,
+  fetchMultiRackTopology,
 } from '../services/api';
 
 interface CapacityViewProps {
   hosts: Host[];
+  onOpenExport?: () => void;
   onRefresh?: () => void;
 }
 
-export const CapacityView: React.FC<CapacityViewProps> = ({ hosts }) => {
+export const CapacityView: React.FC<CapacityViewProps> = ({ hosts, onOpenExport }) => {
   const [forecast, setForecast] = useState<CapacityForecast | null>(null);
   const [powerLogs, setPowerLogs] = useState<FacilityPowerLog[]>([]);
+  const [racks, setRacks] = useState<RackSummary[]>([]);
+  const [selectedRackId, setSelectedRackId] = useState<string>('Rack-01');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [showLogModal, setShowLogModal] = useState<boolean>(false);
   const [logForm, setLogForm] = useState({
@@ -51,12 +57,14 @@ export const CapacityView: React.FC<CapacityViewProps> = ({ hosts }) => {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [fData, logsData] = await Promise.all([
+      const [fData, logsData, racksData] = await Promise.all([
         fetchCapacityForecast(),
         fetchPowerLogs(),
+        fetchMultiRackTopology().catch(() => []),
       ]);
       setForecast(fData);
       setPowerLogs(logsData);
+      setRacks(racksData);
     } catch (e) {
       console.error('Failed to load capacity view data:', e);
     } finally {
@@ -99,87 +107,107 @@ export const CapacityView: React.FC<CapacityViewProps> = ({ hosts }) => {
   const isUtilWarning = utilPct > 70;
   const isUtilCritical = utilPct > 85;
 
+  const currentRack = racks.find((r) => r.rack_id === selectedRackId) || racks[0] || null;
+
+  const getThermalBadgeClass = (tempC: number) => {
+    if (tempC >= 75) return 'bg-rose-500/20 text-rose-400 border-rose-500/40 animate-pulse';
+    if (tempC >= 65) return 'bg-amber-500/20 text-amber-400 border-amber-500/40';
+    if (tempC >= 45) return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40';
+    return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40';
+  };
+
   return (
     <div className="space-y-6">
-      {/* 1. Top Capacity & Growth KPI Bar */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Total Electrical Capacity Card */}
+      {/* 1. Top Row: 3 Capacity Summary KPIs */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {/* Card 1: Rated Capacity Load */}
         <div className="bg-surface-card border border-surface-border rounded-xl p-5 relative overflow-hidden">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between">
             <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">Facility Capacity Load</span>
-            <Zap className="w-4 h-4 text-cyan-400" />
+            <Zap className={`w-4 h-4 ${isUtilCritical ? 'text-rose-400' : isUtilWarning ? 'text-amber-400' : 'text-cyan-400'}`} />
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold font-mono text-white">
-              {forecast?.current_power_load_watts.toLocaleString() || '0'}
+
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-2xl font-bold font-mono text-white">
+              {forecast?.current_power_load_watts ? Math.round(forecast.current_power_load_watts) : 0}
             </span>
-            <span className="text-sm font-mono text-slate-400">
-              / {forecast?.total_capacity_watts.toLocaleString()} W
-            </span>
+            <span className="text-slate-400 text-sm font-mono">/ {forecast ? Math.round(forecast.total_capacity_watts).toLocaleString() : 10000} W</span>
           </div>
 
           {/* Progress Bar */}
-          <div className="w-full bg-slate-800 h-2 rounded-full mt-4 overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${
-                isUtilCritical ? 'bg-rose-500' : isUtilWarning ? 'bg-amber-500' : 'bg-cyan-500'
-              }`}
-              style={{ width: `${Math.min(100, Math.max(2, utilPct))}%` }}
-            />
-          </div>
-          <div className="flex justify-between items-center mt-2 text-xs font-mono text-slate-400">
-            <span>Utilization: <strong className="text-white">{utilPct.toFixed(1)}%</strong></span>
-            <span>80% NEC Derate: <strong className="text-slate-300">8,000 W</strong></span>
+          <div className="mt-4">
+            <div className="h-2 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+              <div
+                className={`h-full transition-all duration-500 ${
+                  isUtilCritical ? 'bg-rose-500' : isUtilWarning ? 'bg-amber-500' : 'bg-cyan-400'
+                }`}
+                style={{ width: `${Math.min(100, Math.max(2, utilPct))}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-[11px] font-mono mt-1 text-slate-400">
+              <span>Utilization: {utilPct.toFixed(1)}%</span>
+              <span className="text-slate-500">80% NEC Derate: 8,000 W</span>
+            </div>
           </div>
         </div>
 
-        {/* Predictive Growth & Exhaustion Date Card */}
-        <div className="bg-surface-card border border-surface-border rounded-xl p-5 relative overflow-hidden">
-          <div className="flex items-center justify-between mb-2">
+        {/* Card 2: Runout Forecast (Days Left) */}
+        <div className="bg-surface-card border border-surface-border rounded-xl p-5">
+          <div className="flex items-center justify-between">
             <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">Capacity Runout Forecast</span>
             <TrendingUp className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold font-mono text-emerald-400">
-              {forecast?.estimated_days_to_exhaustion ? `${forecast.estimated_days_to_exhaustion} Days` : 'Stable'}
+
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-2xl font-bold font-mono text-emerald-400">
+              {forecast?.estimated_days_to_exhaustion ? `${forecast.estimated_days_to_exhaustion} Days` : '365+ Days'}
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-2 line-clamp-2">
-            {forecast?.recommendation || 'Power consumption is operating safely within continuous limits.'}
+
+          <p className="text-xs text-slate-400 mt-2 line-clamp-2 leading-relaxed">
+            {forecast?.recommendation || 'Power consumption is within normal operational bounds.'}
           </p>
-          <div className="mt-3 flex items-center justify-between text-xs font-mono text-slate-400 border-t border-surface-border pt-2">
+
+          <div className="flex items-center justify-between text-[11px] font-mono text-slate-500 border-t border-surface-border/50 pt-2 mt-3">
             <span>Growth Slope:</span>
-            <span className="text-slate-200">+{forecast?.power_growth_slope_watts_per_day} W/day</span>
+            <span className="text-slate-300 font-bold">
+              {forecast ? (forecast.power_growth_slope_watts_per_day >= 0 ? '+' : '') : ''}
+              {forecast?.power_growth_slope_watts_per_day.toFixed(1)} W/day
+            </span>
           </div>
         </div>
 
-        {/* Peak Single-Node Drop Analysis */}
-        <div className="bg-surface-card border border-surface-border rounded-xl p-5 relative overflow-hidden">
-          <div className="flex items-center justify-between mb-2">
+        {/* Card 3: N+1 Peak-Node Drop Resilience */}
+        <div className="bg-surface-card border border-surface-border rounded-xl p-5">
+          <div className="flex items-center justify-between">
             <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">N+1 Peak Node Drop Resilience</span>
-            <ShieldCheck className="w-4 h-4 text-cyan-400" />
+            <ShieldCheck className="w-4 h-4 text-purple-400" />
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-white truncate max-w-[180px]">
-              {forecast?.peak_node_drop.peak_node_hostname || 'N/A'}
+
+          <div className="mt-3">
+            <span className="text-base font-bold font-mono text-white truncate block">
+              {forecast?.peak_node_drop.peak_hostname || 'No node load'}
             </span>
-            <span className="text-xs font-mono text-amber-400">
-              ({forecast?.peak_node_drop.peak_node_watts} W)
+            <span className="text-xs text-amber-400 font-mono">
+              ({forecast?.peak_node_drop.peak_power_watts.toFixed(1) || 0} W)
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-2">
-            {forecast?.peak_node_drop.impact_summary}
+
+          <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+            If peak node '{forecast?.peak_node_drop.peak_hostname}' trips, cluster load reduces to{' '}
+            {forecast?.peak_node_drop.remaining_load_watts.toFixed(1)}W with {forecast?.peak_node_drop.safety_headroom_watts.toFixed(1)}W utility headroom remaining.
           </p>
-          <div className="mt-3 flex items-center justify-between text-xs font-mono text-slate-400 border-t border-surface-border pt-2">
+
+          <div className="flex items-center justify-between text-[11px] font-mono text-slate-500 border-t border-surface-border/50 pt-2 mt-3">
             <span>Safety Headroom:</span>
-            <span className="text-emerald-400 font-bold">+{forecast?.peak_node_drop.safety_headroom_watts} W</span>
+            <span className="text-purple-300 font-bold">+{forecast?.peak_node_drop.safety_headroom_watts.toFixed(0)} W</span>
           </div>
         </div>
       </div>
 
-      {/* 2. Middle Row: Linear Regression Trend + 42U Rack Layout */}
+      {/* 2. Middle Row: Predictive Power Growth Chart + Multi-Rack Elevation */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Predictive Linear Growth Chart */}
+        {/* Left 2 Cols: Power Growth & Linear Trajectory */}
         <div className="lg:col-span-2 bg-surface-card border border-surface-border rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -188,8 +216,8 @@ export const CapacityView: React.FC<CapacityViewProps> = ({ hosts }) => {
               </h3>
               <p className="text-xs text-slate-400">Actual telemetry vs. Linear Regression model (y = mx + c)</p>
             </div>
-            <span className="text-xs font-mono px-2.5 py-1 rounded bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
-              Trend: {forecast?.growth_trend}
+            <span className="text-xs font-mono px-2.5 py-1 rounded bg-slate-900 border border-slate-700 text-cyan-400 font-bold">
+              Trend: {forecast?.growth_trend || 'MODERATE_GROWTH'}
             </span>
           </div>
 
@@ -201,8 +229,12 @@ export const CapacityView: React.FC<CapacityViewProps> = ({ hosts }) => {
                     <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.4} />
                     <stop offset="95%" stopColor="#06b6d4" stopOpacity={0.0} />
                   </linearGradient>
+                  <linearGradient id="projectedPowerGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#818cf8" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#818cf8" stopOpacity={0.0} />
+                  </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                 <XAxis dataKey="timestamp" stroke="#64748b" fontSize={11} tickLine={false} />
                 <YAxis stroke="#64748b" fontSize={11} tickLine={false} tickFormatter={(v) => `${v}W`} />
                 <Tooltip
@@ -221,70 +253,150 @@ export const CapacityView: React.FC<CapacityViewProps> = ({ hosts }) => {
                   name="Historical Actual Power (W)"
                   stroke="#06b6d4"
                   strokeWidth={2}
+                  fillOpacity={1}
                   fill="url(#actualPowerGrad)"
                 />
                 <Line
                   type="monotone"
                   dataKey="projected_power_watts"
-                  name="Projected Linear Forecast (W)"
-                  stroke="#10b981"
+                  name="Linear Regression Trajectory (W)"
+                  stroke="#a855f7"
                   strokeWidth={2}
-                  strokeDasharray="5 5"
-                  dot={{ r: 3 }}
+                  strokeDasharray="4 4"
+                  dot={false}
                 />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Visual 42U Rack Elevation */}
-        <div className="bg-surface-card border border-surface-border rounded-xl p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Layers className="w-4 h-4 text-cyan-400" />
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
-                Rack-01 Elevation (42U)
-              </h3>
+        {/* Right Col: Multi-Rack Elevation & Thermal Heatmap Matrix */}
+        <div className="bg-surface-card border border-surface-border rounded-xl p-5 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Layers className="w-4 h-4 text-cyan-400" />
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
+                  Rack Elevation & Thermal Heatmap
+                </h3>
+              </div>
+              <span className="text-[11px] font-mono text-slate-400">{currentRack?.zone || 'Zone A'}</span>
             </div>
-            <span className="text-xs text-slate-400 font-mono">Zone A</span>
+
+            {/* Multi-Rack Switcher Tabs */}
+            <div className="grid grid-cols-3 gap-1.5 mb-3 bg-slate-900/80 p-1 rounded-lg border border-slate-800">
+              {['Rack-01', 'Rack-02', 'Rack-03'].map((rId) => {
+                const isSel = selectedRackId === rId;
+                const rData = racks.find((r) => r.rack_id === rId);
+                return (
+                  <button
+                    key={rId}
+                    onClick={() => setSelectedRackId(rId)}
+                    className={`py-1.5 px-2 rounded-md font-mono text-xs font-bold transition-all ${
+                      isSel
+                        ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    {rId}
+                    {rData && (
+                      <span className="block text-[9px] font-normal opacity-80">
+                        {rData.occupied_u}U / {rData.avg_temperature_celsius}&deg;C
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Rack Summary Stats */}
+            <div className="flex items-center justify-between bg-slate-900/50 p-2 rounded-lg border border-surface-border text-[11px] font-mono mb-3">
+              <span className="text-slate-400">
+                Load: <strong className="text-white">{currentRack?.total_power_watts || 0}W</strong> / {currentRack?.max_power_kw || 5}kW
+              </span>
+              <span className="flex items-center gap-1 text-slate-400">
+                <Thermometer className="w-3.5 h-3.5 text-amber-400" />
+                Avg Temp: <strong className="text-amber-400">{currentRack?.avg_temperature_celsius || 24}&deg;C</strong>
+              </span>
+            </div>
           </div>
 
-          {/* Rack Visual Frame */}
-          <div className="bg-slate-950 border-2 border-slate-800 rounded-lg p-2.5 h-72 overflow-y-auto space-y-1.5 font-mono text-xs">
-            {hosts.map((h, idx) => {
-              const cfg = h.power_config;
-              const uStart = cfg?.rack_unit_start || idx * 2 + 1;
-              const uHeight = cfg?.rack_unit_height || 2;
-              const feed = cfg?.pdu?.feed || (idx % 2 === 0 ? 'A' : 'B');
+          {/* Rack Visual 42U Frame */}
+          <div className="bg-slate-950 border-2 border-slate-800 rounded-lg p-2.5 h-64 overflow-y-auto space-y-1.5 font-mono text-xs">
+            {currentRack && currentRack.hosts.length > 0 ? (
+              currentRack.hosts.map((h) => {
+                const uStart = h.u_start;
+                const uHeight = h.u_height;
+                const feed = h.feed || 'A';
+                const tempC = h.temperature_celsius || 42.0;
 
-              return (
-                <div
-                  key={h.id}
-                  className="bg-surface-card border border-slate-700/80 rounded px-2.5 py-1.5 flex items-center justify-between hover:border-cyan-500/50 transition-colors"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-slate-500 font-bold">
-                      U{uStart.toString().padStart(2, '0')}-U{(uStart + uHeight - 1).toString().padStart(2, '0')}
-                    </span>
-                    <span className="text-slate-200 font-bold truncate">{h.hostname}</span>
+                return (
+                  <div
+                    key={h.host_id}
+                    className="bg-surface-card border border-slate-700/80 rounded px-2.5 py-1.5 flex items-center justify-between hover:border-cyan-500/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-slate-500 font-bold">
+                        U{uStart.toString().padStart(2, '0')}-U{(uStart + uHeight - 1).toString().padStart(2, '0')}
+                      </span>
+                      <span className="text-slate-200 font-bold truncate">{h.hostname}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      {/* Thermal Badge */}
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded border font-bold ${getThermalBadgeClass(tempC)}`}>
+                        {tempC}&deg;C
+                      </span>
+
+                      {/* Feed Badge */}
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                          feed === 'A' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-indigo-500/20 text-indigo-400'
+                        }`}
+                      >
+                        Feed {feed}
+                      </span>
+                      <span className="text-slate-400 text-[11px]">{h.power_watts}W</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
-                        feed === 'A' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-indigo-500/20 text-indigo-400'
-                      }`}
-                    >
-                      Feed {feed}
-                    </span>
-                    <span className="text-slate-400">{cfg?.rated_watts || 150}W</span>
+                );
+              })
+            ) : (
+              hosts.map((h, idx) => {
+                const cfg = h.power_config;
+                const uStart = cfg?.rack_unit_start || idx * 2 + 1;
+                const uHeight = cfg?.rack_unit_height || 2;
+                const feed = cfg?.pdu?.feed || (idx % 2 === 0 ? 'A' : 'B');
+
+                return (
+                  <div
+                    key={h.id}
+                    className="bg-surface-card border border-slate-700/80 rounded px-2.5 py-1.5 flex items-center justify-between hover:border-cyan-500/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-slate-500 font-bold">
+                        U{uStart.toString().padStart(2, '0')}-U{(uStart + uHeight - 1).toString().padStart(2, '0')}
+                      </span>
+                      <span className="text-slate-200 font-bold truncate">{h.hostname}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                          feed === 'A' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-indigo-500/20 text-indigo-400'
+                        }`}
+                      >
+                        Feed {feed}
+                      </span>
+                      <span className="text-slate-400">{cfg?.rated_watts || 150}W</span>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
 
             {/* Empty Rack Filler Slot */}
             <div className="border border-dashed border-slate-800 rounded p-2 text-center text-slate-600 text-[11px]">
-              + 30U Available Expansion Space
+              + {currentRack ? currentRack.available_u : 32}U Available Space
             </div>
           </div>
         </div>
@@ -299,13 +411,27 @@ export const CapacityView: React.FC<CapacityViewProps> = ({ hosts }) => {
             </h3>
             <p className="text-xs text-slate-400">Monthly utility meter audits, IT energy, and long-term PUE optimization</p>
           </div>
-          <button
-            onClick={() => setShowLogModal(true)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition-colors"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>Add Monthly Audit</span>
-          </button>
+          
+          <div className="flex items-center gap-2.5">
+            {/* 1-Click Export Report Button */}
+            {onOpenExport && (
+              <button
+                onClick={onOpenExport}
+                className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-400 font-bold text-xs font-mono transition-all shadow-md shadow-emerald-500/10"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Export DCIM Audit Report</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => setShowLogModal(true)}
+              className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs font-mono transition-colors"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>Add Monthly Audit</span>
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -354,8 +480,8 @@ export const CapacityView: React.FC<CapacityViewProps> = ({ hosts }) => {
                     <td className="p-2.5 text-right">
                       <button
                         onClick={() => handleDeleteLog(log.id)}
-                        className="text-slate-500 hover:text-rose-400 transition-colors p-1"
-                        title="Delete record"
+                        className="text-slate-500 hover:text-rose-400 p-1 transition-colors"
+                        title="Delete log"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -368,73 +494,88 @@ export const CapacityView: React.FC<CapacityViewProps> = ({ hosts }) => {
         </div>
       </div>
 
-      {/* Modal: Add Power Log */}
+      {/* Add Monthly Audit Modal */}
       {showLogModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-surface-card border border-surface-border rounded-xl max-w-md w-full p-6 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-surface-card border border-surface-border rounded-xl p-6 max-w-md w-full shadow-2xl space-y-4">
             <h3 className="text-base font-bold text-white font-mono flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-cyan-400" />
-              <span>Record Monthly Utility Power Audit</span>
+              <Calendar className="w-5 h-5 text-cyan-400" />
+              Add Monthly Energy Audit
             </h3>
-
-            <form onSubmit={handleSaveLog} className="space-y-3 font-mono text-xs">
+            <form onSubmit={handleSaveLog} className="space-y-4 font-mono text-xs">
               <div>
-                <label className="block text-slate-400 mb-1">Audit Month (YYYY-MM)</label>
+                <label className="block text-slate-400 mb-1">Billing Month (YYYY-MM):</label>
                 <input
-                  type="text"
+                  type="month"
                   required
                   value={logForm.log_month}
                   onChange={(e) => setLogForm({ ...logForm, log_month: e.target.value })}
-                  className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"
-                  placeholder="2026-04"
+                  className="w-full bg-slate-900 border border-surface-border rounded p-2 text-white focus:outline-none focus:border-cyan-500"
                 />
               </div>
-              <div>
-                <label className="block text-slate-400 mb-1">Total Facility Energy (kWh)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  required
-                  value={logForm.total_facility_kwh}
-                  onChange={(e) => setLogForm({ ...logForm, total_facility_kwh: parseFloat(e.target.value) })}
-                  className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"
-                />
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 mb-1">Total Facility (kWh):</label>
+                  <input
+                    type="number"
+                    step="1"
+                    required
+                    value={logForm.total_facility_kwh}
+                    onChange={(e) => setLogForm({ ...logForm, total_facility_kwh: parseFloat(e.target.value) })}
+                    className="w-full bg-slate-900 border border-surface-border rounded p-2 text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-400 mb-1">IT Equipment (kWh):</label>
+                  <input
+                    type="number"
+                    step="1"
+                    required
+                    value={logForm.it_equipment_kwh}
+                    onChange={(e) => setLogForm({ ...logForm, it_equipment_kwh: parseFloat(e.target.value) })}
+                    className="w-full bg-slate-900 border border-surface-border rounded p-2 text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
               </div>
+
               <div>
-                <label className="block text-slate-400 mb-1">IT Equipment Energy (kWh)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  required
-                  value={logForm.it_equipment_kwh}
-                  onChange={(e) => setLogForm({ ...logForm, it_equipment_kwh: parseFloat(e.target.value) })}
-                  className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"
-                />
+                <label className="block text-slate-400 mb-1">Estimated PUE Preview:</label>
+                <div className="bg-slate-900 p-2.5 rounded border border-slate-800 text-cyan-400 font-bold text-sm">
+                  {logForm.it_equipment_kwh > 0
+                    ? (logForm.total_facility_kwh / logForm.it_equipment_kwh).toFixed(3)
+                    : 'N/A'}{' '}
+                  <span className="text-xs font-normal text-slate-500">
+                    {logForm.it_equipment_kwh > 0 && logForm.total_facility_kwh / logForm.it_equipment_kwh <= 1.3
+                      ? '(BOI Standard Compliant)'
+                      : ''}
+                  </span>
+                </div>
               </div>
+
               <div>
-                <label className="block text-slate-400 mb-1">Notes / Audit Reference</label>
+                <label className="block text-slate-400 mb-1">Notes / Utility Invoice Ref:</label>
                 <input
                   type="text"
                   value={logForm.notes}
                   onChange={(e) => setLogForm({ ...logForm, notes: e.target.value })}
-                  className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"
-                  placeholder="Utility invoice #1042"
+                  className="w-full bg-slate-900 border border-surface-border rounded p-2 text-white focus:outline-none focus:border-cyan-500"
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-3">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-surface-border">
                 <button
                   type="button"
                   onClick={() => setShowLogModal(false)}
-                  className="px-4 py-2 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold"
+                  className="px-4 py-2 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold"
+                  className="px-4 py-2 rounded bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold transition-colors"
                 >
-                  Save Record
+                  Save Entry
                 </button>
               </div>
             </form>

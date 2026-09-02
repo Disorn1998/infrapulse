@@ -53,12 +53,13 @@ export interface Metric {
   net_recv_bytes_per_sec: number | null;
   uptime_seconds: number;
   calculated_power_watts?: number | null;
+  cpu_temperature_celsius?: number | null;
   load_1m?: number | null;
   load_5m?: number | null;
   load_15m?: number | null;
 }
 
-export interface FeedStatus {
+export interface FeedRedundancy {
   feed_name: string;
   pdu_names: string[];
   rated_watts: number;
@@ -68,11 +69,11 @@ export interface FeedStatus {
   is_derate_safe: boolean;
 }
 
-export interface RedundancyCheck {
+export interface FacilityRedundancy {
   is_n_plus_one_compliant: boolean;
-  status: 'HEALTHY' | 'AT_RISK' | 'NON_COMPLIANT' | string;
-  feed_a?: FeedStatus;
-  feed_b?: FeedStatus;
+  status: 'HEALTHY' | 'NON_COMPLIANT' | 'WARNING' | string;
+  feed_a: FeedRedundancy;
+  feed_b: FeedRedundancy;
   worst_case_failover_load_watts: number;
   surviving_feed_headroom_watts: number;
   message: string;
@@ -88,11 +89,11 @@ export interface FacilityOverview {
   total_facility_power_watts: number;
   current_pue: number;
   target_pue: number;
-  pue_status: 'OPTIMAL' | 'DEGRADED' | 'CRITICAL' | string;
+  pue_status: 'OPTIMAL' | 'ACCEPTABLE' | 'POOR' | 'CRITICAL' | string;
   power_capacity_utilization_percent: number;
   active_hosts_count: number;
   total_hosts_count: number;
-  redundancy: RedundancyCheck;
+  redundancy: FacilityRedundancy;
 }
 
 export interface FacilityPowerLog {
@@ -103,17 +104,16 @@ export interface FacilityPowerLog {
   calculated_pue: number;
   cooling_kwh?: number;
   notes?: string | null;
-  created_at: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface PeakNodeDrop {
-  peak_node_hostname: string;
-  peak_node_watts: number;
-  surviving_it_load_watts: number;
-  total_capacity_watts: number;
-  is_surviving_capacity_safe: boolean;
+  peak_host_id: string;
+  peak_hostname: string;
+  peak_power_watts: number;
   safety_headroom_watts: number;
-  impact_summary: string;
+  remaining_load_watts: number;
 }
 
 export interface TrendPoint {
@@ -137,7 +137,7 @@ export interface CapacityForecast {
 
 export interface AiInsightCard {
   id: string;
-  category: 'ENERGY_OPTIMIZATION' | 'ELECTRICAL_SAFETY' | 'CAPACITY_PLANNING' | 'HARDWARE_HEALTH' | string;
+  category: 'ENERGY_OPTIMIZATION' | 'ELECTRICAL_SAFETY' | 'CAPACITY_PLANNING' | 'HARDWARE_HEALTH' | 'THERMAL_MANAGEMENT' | string;
   severity: 'CRITICAL' | 'WARNING' | 'OPTIMIZATION' | 'INFO' | string;
   title: string;
   summary: string;
@@ -169,4 +169,40 @@ export interface SimulationResult {
   status: string;
   action: string;
   message: string;
+}
+
+export interface RackHost {
+  host_id: string;
+  hostname: string;
+  status: string;
+  is_online: boolean;
+  u_start: number;
+  u_height: number;
+  power_watts: number;
+  temperature_celsius: number;
+  feed: string;
+  rated_watts: number;
+}
+
+export interface RackSummary {
+  rack_id: string;
+  name: string;
+  zone: string;
+  total_u: number;
+  occupied_u: number;
+  available_u: number;
+  total_power_watts: number;
+  max_power_kw: number;
+  power_utilization_pct: number;
+  avg_temperature_celsius: number;
+  thermal_status: 'OPTIMAL' | 'WARM' | 'HOTSPOT';
+  hosts: RackHost[];
+}
+
+export interface AlertSettingsSummary {
+  cpu_threshold: number;
+  ram_threshold: number;
+  disk_threshold: number;
+  temp_threshold: number;
+  recipient_email: string;
 }

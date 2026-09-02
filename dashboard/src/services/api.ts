@@ -99,6 +99,38 @@ export async function triggerSimulateOutage(): Promise<import('../types/api').Si
   return res.json();
 }
 
+export async function fetchMultiRackTopology(): Promise<import('../types/api').RackSummary[]> {
+  const res = await fetch(`${API_BASE}/facility/racks`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch multi-rack topology: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function fetchAlertRulesSummary(): Promise<import('../types/api').AlertSettingsSummary> {
+  const res = await fetch(`${API_BASE}/alerts/rules/summary`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch alert rules: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function updateAlertRulesSummary(payload: import('../types/api').AlertSettingsSummary): Promise<import('../types/api').AlertSettingsSummary> {
+  const res = await fetch(`${API_BASE}/alerts/rules/summary`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to update alert rules: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export function getExportCsvUrl(): string {
+  return `${API_BASE}/facility/export/audit-csv`;
+}
+
 // Utility: Format bytes into human readable binary units
 export function formatBytes(bytes?: number | null, decimals = 1): string {
   if (bytes === undefined || bytes === null || isNaN(bytes) || bytes === 0) return '0 B';

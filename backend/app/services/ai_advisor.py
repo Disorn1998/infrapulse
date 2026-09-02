@@ -197,6 +197,49 @@ def generate_ai_advisor_insights(db: Session) -> AiAdvisorResponse:
             )
         )
 
+    # -------------------------------------------------------------
+    # 5. Thermal & Airflow Heatmap Diagnostics
+    # -------------------------------------------------------------
+    from sqlalchemy import desc
+    hot_nodes = []
+    for h in hosts:
+        latest_m = db.query(Metric).filter(Metric.host_id == h.id).order_by(desc(Metric.timestamp)).first()
+        if latest_m and latest_m.cpu_temperature_celsius and latest_m.cpu_temperature_celsius >= 75.0:
+            hot_nodes.append((h.hostname, latest_m.cpu_temperature_celsius))
+
+    if hot_nodes:
+        health_score -= (len(hot_nodes) * 10)
+        hot_str = ", ".join([f"{name} ({t}°C)" for name, t in hot_nodes[:3]])
+        insights.append(
+            AiInsightCard(
+                id=str(uuid.uuid4()),
+                category="THERMAL_MANAGEMENT",
+                severity="WARNING",
+                title=f"Thermal Hotspot Detected: {hot_str}",
+                summary=f"{len(hot_nodes)} node(s) exceed recommended operating threshold (75°C). Thermal throttling risk.",
+                impact="Potential CPU throttling, degraded workload performance, and accelerated hardware degradation.",
+                recommended_action="Inspect CRAC airflow intake, clean dust filters, or migrate high-density workloads across cooler rack slots.",
+                estimated_savings_or_benefit="Prevents thermal CPU downclocking and extends server hardware MTBF.",
+                action_type="INSPECT_AIRFLOW",
+                created_at=now_str,
+            )
+        )
+    else:
+        insights.append(
+            AiInsightCard(
+                id=str(uuid.uuid4()),
+                category="THERMAL_MANAGEMENT",
+                severity="INFO",
+                title="Rack Thermal Gradient Optimal",
+                summary="All monitored server nodes are operating within standard thermal range (< 70°C).",
+                impact="Safe operating temperatures across cold-aisle and hot-aisle containment.",
+                recommended_action="Maintain current CRAC supply fan speed and baseline ambient cooling.",
+                estimated_savings_or_benefit="Zero cooling overhead waste.",
+                action_type="HEALTHY",
+                created_at=now_str,
+            )
+        )
+
     # Clamp health score between 0 and 100
     final_health_score = max(0, min(100, health_score))
     if final_health_score >= 90:

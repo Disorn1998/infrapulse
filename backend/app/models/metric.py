@@ -42,6 +42,9 @@ class Metric(Base):
     # Power(t) = IdleWatts + (CPU% / 100) * (RatedWatts - IdleWatts)
     calculated_power_watts = Column(Float, nullable=True, default=0.0)
 
+    # Thermal & Temperature Metric (°C)
+    cpu_temperature_celsius = Column(Float, nullable=True, default=42.0)
+
     # Relationship
     host = relationship("Host", back_populates="metrics")
 

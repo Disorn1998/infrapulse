@@ -61,23 +61,38 @@ export const HostCard: React.FC<HostCardProps> = ({
           </div>
         </div>
 
-        {/* Dynamic Status Badge */}
-        <div className="flex flex-col items-end">
-          <span
-            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono font-medium border ${
-              isOnline
-                ? 'bg-emerald-950/60 border-emerald-500/30 text-emerald-400'
-                : 'bg-slate-800/80 border-slate-700 text-slate-400'
-            }`}
-          >
+        {/* Dynamic Status Badge & Temperature Pill */}
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex items-center gap-1.5">
+            {latestMetric?.cpu_temperature_celsius && (
+              <span
+                className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border ${
+                  latestMetric.cpu_temperature_celsius >= 75
+                    ? 'bg-rose-500/20 text-rose-400 border-rose-500/40 animate-pulse'
+                    : latestMetric.cpu_temperature_celsius >= 65
+                    ? 'bg-amber-500/20 text-amber-400 border-amber-500/40'
+                    : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40'
+                }`}
+              >
+                🌡️ {latestMetric.cpu_temperature_celsius}&deg;C
+              </span>
+            )}
             <span
-              className={`w-1.5 h-1.5 rounded-full ${
-                isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'
+              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono font-medium border ${
+                isOnline
+                  ? 'bg-emerald-950/60 border-emerald-500/30 text-emerald-400'
+                  : 'bg-slate-800/80 border-slate-700 text-slate-400'
               }`}
-            ></span>
-            {isOnline ? 'Online' : 'Offline'}
-          </span>
-          <span className="text-[10px] text-slate-500 font-mono mt-1">
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'
+                }`}
+              ></span>
+              {isOnline ? 'Online' : 'Offline'}
+            </span>
+          </div>
+          <span className="text-[10px] text-slate-500 font-mono">
             {formatLastSeen(host.seconds_since_last_seen)}
           </span>
         </div>

@@ -7,6 +7,8 @@ import { CapacityView } from './components/CapacityView';
 import { AiAdvisorWidget } from './components/AiAdvisorWidget';
 import { DemoControlBar } from './components/DemoControlBar';
 import { EmptyState } from './components/EmptyState';
+import { AlertSettingsModal } from './components/AlertSettingsModal';
+import { ExportReportModal } from './components/ExportReportModal';
 import { Host, Metric, FacilityOverview, AiAdvisorResponse } from './types/api';
 import { fetchHosts, fetchHostMetrics, fetchFacilityOverview, fetchAiInsights } from './services/api';
 import { Server, AlertCircle, Activity, Zap, Bot } from 'lucide-react';
@@ -26,6 +28,10 @@ export const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Modals state
+  const [isAlertModalOpen, setIsAlertModalOpen] = useState<boolean>(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
 
   const [latestMetricsMap, setLatestMetricsMap] = useState<Record<string, Metric>>({});
 
@@ -127,6 +133,8 @@ export const App: React.FC = () => {
         countdown={countdown}
         isRefreshing={isRefreshing}
         onManualRefresh={handleManualRefresh}
+        onOpenSettings={() => setIsAlertModalOpen(true)}
+        onOpenExport={() => setIsExportModalOpen(true)}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
@@ -235,7 +243,11 @@ export const App: React.FC = () => {
 
         {/* Tab 2: Capacity & Power Intelligence */}
         {activeTab === 'capacity' && (
-          <CapacityView hosts={hosts} onRefresh={handleManualRefresh} />
+          <CapacityView
+            hosts={hosts}
+            onOpenExport={() => setIsExportModalOpen(true)}
+            onRefresh={handleManualRefresh}
+          />
         )}
 
         {/* Tab 3: AI Infrastructure Copilot */}
@@ -247,6 +259,19 @@ export const App: React.FC = () => {
           />
         )}
       </main>
+
+      {/* Global Modals */}
+      <AlertSettingsModal
+        isOpen={isAlertModalOpen}
+        onClose={() => setIsAlertModalOpen(false)}
+      />
+
+      <ExportReportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        overview={facility}
+        hosts={hosts}
+      />
 
       <footer className="border-t border-surface-border py-4 px-6 text-center text-xs font-mono text-slate-500">
         InfraPulse DCIM & Telemetry Platform • Built for Edge Data Centers & Server Rooms

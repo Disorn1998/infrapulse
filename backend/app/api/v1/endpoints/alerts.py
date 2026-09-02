@@ -15,7 +15,81 @@ from app.schemas.alert import (
 from app.services.alert_service import run_alert_evaluation_cycle
 from app.services.email_service import send_email_alert
 
-router = APIRouter()
+from pydantic import BaseModel
+
+
+class AlertSettingsSummary(BaseModel):
+    cpu_threshold: float = 85.0
+    ram_threshold: float = 90.0
+    disk_threshold: float = 90.0
+    temp_threshold: float = 75.0
+    recipient_email: str = "admin@infrapulse.local"
+
+
+@router.get("/rules/summary", response_model=AlertSettingsSummary)
+def get_alert_rules_summary(db: Session = Depends(get_db)):
+    """Retrieve summarized threshold values for GUI settings modal."""
+    rules = db.query(AlertConfig).filter(AlertConfig.host_id == None).all()
+    cpu = 85.0
+    ram = 90.0
+    disk = 90.0
+    temp = 75.0
+    email = "admin@infrapulse.local"
+
+    for r in rules:
+        if r.recipient_email:
+            email = r.recipient_email
+        if r.metric_name == "cpu_percent":
+            cpu = r.threshold_value
+        elif r.metric_name == "ram_percent":
+            ram = r.threshold_value
+        elif r.metric_name == "disk_percent":
+            disk = r.threshold_value
+        elif r.metric_name in ["cpu_temperature_celsius", "temperature"]:
+            temp = r.threshold_value
+
+    return AlertSettingsSummary(
+        cpu_threshold=cpu,
+        ram_threshold=ram,
+        disk_threshold=disk,
+        temp_threshold=temp,
+        recipient_email=email,
+    )
+
+
+@router.put("/rules/summary", response_model=AlertSettingsSummary)
+def update_alert_rules_summary(
+    settings_in: AlertSettingsSummary,
+    db: Session = Depends(get_db),
+):
+    """Update global threshold rules from GUI sliders."""
+    targets = {
+        "cpu_percent": settings_in.cpu_threshold,
+        "ram_percent": settings_in.ram_threshold,
+        "disk_percent": settings_in.disk_threshold,
+        "cpu_temperature_celsius": settings_in.temp_threshold,
+    }
+
+    for metric_name, val in targets.items():
+        rule = db.query(AlertConfig).filter(AlertConfig.host_id == None, AlertConfig.metric_name == metric_name).first()
+        if not rule:
+            rule = AlertConfig(
+                metric_name=metric_name,
+                operator=">=",
+                threshold_value=val,
+                recipient_email=settings_in.recipient_email,
+                cooldown_minutes=15,
+                is_active=True,
+                current_state="OK",
+            )
+            db.add(rule)
+        else:
+            rule.threshold_value = val
+            rule.recipient_email = settings_in.recipient_email
+            rule.is_active = True
+
+    db.commit()
+    return settings_in
 
 
 @router.get("/configs", response_model=List[AlertConfigResponse])

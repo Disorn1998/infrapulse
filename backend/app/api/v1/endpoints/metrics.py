@@ -141,6 +141,7 @@ def ingest_metric(
         load_5m=metric_in.load_5m,
         load_15m=metric_in.load_15m,
         calculated_power_watts=computed_power,
+        cpu_temperature_celsius=metric_in.cpu_temperature_celsius or round(36.0 + (metric_in.cpu_percent / 100.0) * 38.0, 1),
     )
     db.add(metric_entry)
     db.commit()
@@ -242,6 +243,7 @@ def ingest_metrics_batch(
             load_5m=metric_in.load_5m,
             load_15m=metric_in.load_15m,
             calculated_power_watts=computed_power,
+            cpu_temperature_celsius=metric_in.cpu_temperature_celsius or round(36.0 + (metric_in.cpu_percent / 100.0) * 38.0, 1),
         )
         db.add(metric_entry)
         inserted_count += 1

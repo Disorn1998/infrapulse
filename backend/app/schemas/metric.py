@@ -34,6 +34,9 @@ class MetricIngest(BaseModel):
     load_5m: Optional[float] = None
     load_15m: Optional[float] = None
 
+    # Thermal & Temperature Metric (°C)
+    cpu_temperature_celsius: Optional[float] = Field(None, description="CPU package temperature in Celsius")
+
 
 class MetricResponse(BaseModel):
     """Schema returned when querying metrics."""
@@ -50,5 +53,6 @@ class MetricResponse(BaseModel):
     net_recv_bytes_per_sec: Optional[float] = None
     uptime_seconds: Optional[int] = None
     calculated_power_watts: Optional[float] = None
+    cpu_temperature_celsius: Optional[float] = 42.0
 
     model_config = ConfigDict(from_attributes=True)

@@ -36,8 +36,31 @@ SIMULATED_NODES = [
         "idle_w": 25.0,
         "rated_w": 120.0,
         "pdu_id": 1,
+        "rack_name": "Rack-01",
         "rack_unit": 1,
         "height": 2,
+        "temp_c": 39.5,
+    },
+    {
+        "hostname": "web-frontend-01",
+        "ip_address": "192.168.1.14",
+        "os_type": "ubuntu",
+        "os_version": "Ubuntu 24.04 LTS",
+        "cpu_count": 8,
+        "total_ram": 32000000000,
+        "total_disk": 512000000000,
+        "cpu": 32.0,
+        "ram": 48.0,
+        "disk": 35.0,
+        "net_rx": 8200000.0,
+        "net_tx": 11500000.0,
+        "idle_w": 35.0,
+        "rated_w": 180.0,
+        "pdu_id": 2,
+        "rack_name": "Rack-01",
+        "rack_unit": 4,
+        "height": 2,
+        "temp_c": 44.0,
     },
     {
         "hostname": "db-primary-01",
@@ -55,8 +78,10 @@ SIMULATED_NODES = [
         "idle_w": 60.0,
         "rated_w": 350.0,
         "pdu_id": 2,
-        "rack_unit": 3,
-        "height": 2,
+        "rack_name": "Rack-02",
+        "rack_unit": 1,
+        "height": 4,
+        "temp_c": 52.0,
     },
     {
         "hostname": "ai-inference-01",
@@ -74,8 +99,10 @@ SIMULATED_NODES = [
         "idle_w": 150.0,
         "rated_w": 850.0,
         "pdu_id": 1,
-        "rack_unit": 5,
-        "height": 4,
+        "rack_name": "Rack-03",
+        "rack_unit": 1,
+        "height": 6,
+        "temp_c": 68.5,
     },
     {
         "hostname": "storage-nas-01",
@@ -93,15 +120,17 @@ SIMULATED_NODES = [
         "idle_w": 80.0,
         "rated_w": 400.0,
         "pdu_id": 2,
-        "rack_unit": 9,
+        "rack_name": "Rack-03",
+        "rack_unit": 8,
         "height": 4,
+        "temp_c": 46.0,
     },
 ]
 
 
 @router.post("/cluster", response_model=SimulationResult)
 def trigger_cluster_simulation(db: Session = Depends(get_db)):
-    """Instantly inject 4 enterprise server nodes across Feed A and Feed B"""
+    """Instantly inject enterprise server nodes across Rack-01, Rack-02, and Rack-03"""
     now = datetime.now(timezone.utc)
 
     for node in SIMULATED_NODES:
@@ -136,7 +165,7 @@ def trigger_cluster_simulation(db: Session = Depends(get_db)):
                 idle_watts=node["idle_w"],
                 rated_watts=node["rated_w"],
                 pdu_id=node["pdu_id"],
-                rack_name="Rack-01",
+                rack_name=node["rack_name"],
                 rack_unit_start=node["rack_unit"],
                 rack_unit_height=node["height"],
             )
@@ -145,6 +174,7 @@ def trigger_cluster_simulation(db: Session = Depends(get_db)):
             p_cfg.idle_watts = node["idle_w"]
             p_cfg.rated_watts = node["rated_w"]
             p_cfg.pdu_id = node["pdu_id"]
+            p_cfg.rack_name = node["rack_name"]
             p_cfg.rack_unit_start = node["rack_unit"]
             p_cfg.rack_unit_height = node["height"]
 
@@ -163,6 +193,7 @@ def trigger_cluster_simulation(db: Session = Depends(get_db)):
             net_sent_bytes_per_sec=node["net_tx"],
             uptime_seconds=86400 * 5,
             calculated_power_watts=calculated_w,
+            cpu_temperature_celsius=node["temp_c"],
         )
         db.add(metric)
 
@@ -170,7 +201,7 @@ def trigger_cluster_simulation(db: Session = Depends(get_db)):
     return SimulationResult(
         status="success",
         action="provision_cluster",
-        message="Provisioned 4 enterprise cluster nodes across Feed A and Feed B in 42U rack.",
+        message="Provisioned 5 enterprise cluster nodes across Rack-01, Rack-02, and Rack-03.",
     )
 
 
@@ -200,6 +231,7 @@ def trigger_stress_simulation(db: Session = Depends(get_db)):
                 net_sent_bytes_per_sec=node["net_tx"] * 3.0,
                 uptime_seconds=86400 * 5,
                 calculated_power_watts=calc_w,
+                cpu_temperature_celsius=round(node["temp_c"] + 14.5, 1),
             )
             db.add(metric)
     db.commit()
