@@ -61,18 +61,29 @@ $ConfigJson = @"
 "@
 Set-Content -Path "$InstallDir\config.json" -Value $ConfigJson -Encoding UTF8
 
-# 6. Create or Replace Scheduled Task for Background Execution
-Write-Host "[*] Registering Windows Scheduled Task for 24/7 background execution..." -ForegroundColor Yellow
-Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
+# 6. Register Background Daemon (Scheduled Task or Startup Folder Fallback)
+Write-Host "[*] Registering 24/7 background execution..." -ForegroundColor Yellow
+$IsAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
-$Action = New-ScheduledTaskAction -Execute "pythonw.exe" -Argument "`"$InstallDir\monitor_agent.py`" --config `"$InstallDir\config.json`"" -WorkingDirectory $InstallDir
-$Trigger = New-ScheduledTaskTrigger -AtStartup
-$Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit 0 -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
+try {
+    Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
+    $Action = New-ScheduledTaskAction -Execute "pythonw.exe" -Argument "`"$InstallDir\monitor_agent.py`" --config `"$InstallDir\config.json`"" -WorkingDirectory $InstallDir
+    $Trigger = New-ScheduledTaskTrigger -AtLogOn
+    $Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit 0 -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
 
-Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger $Trigger -Settings $Settings -Description "InfraPulse DCIM Background Telemetry Agent" -User "SYSTEM" -RunLevel Highest | Out-Null
-
-# 7. Start the Task Immediately
-Start-ScheduledTask -TaskName $TaskName
+    if ($IsAdmin) {
+        Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger $Trigger -Settings $Settings -Description "InfraPulse DCIM Background Telemetry Agent" -User "SYSTEM" -RunLevel Highest | Out-Null
+    } else {
+        Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger $Trigger -Settings $Settings -Description "InfraPulse DCIM Background Telemetry Agent" | Out-Null
+    }
+    Start-ScheduledTask -TaskName $TaskName
+} catch {
+    Write-Host "[*] Setting up auto-start via Windows User Startup daemon..." -ForegroundColor Yellow
+    $StartupDir = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup"
+    $VbsScript = "Set WshShell = CreateObject(`"WScript.Shell`")`nWshShell.Run `"pythonw.exe `"`"$($InstallDir.Replace('\', '\\'))\\monitor_agent.py`"`" --config `"`"$($InstallDir.Replace('\', '\\'))\\config.json`"`"`, 0, False"
+    Set-Content -Path "$StartupDir\InfraPulse-Agent.vbs" -Value $VbsScript -Encoding ASCII
+    Start-Process "pythonw.exe" -ArgumentList "`"$InstallDir\monitor_agent.py`" --config `"$InstallDir\config.json`"" -WorkingDirectory $InstallDir
+}
 
 Write-Host "==================================================================" -ForegroundColor Green
 Write-Host "  [OK] InfraPulse Windows Agent successfully installed & running! " -ForegroundColor Green
