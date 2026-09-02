@@ -1,24 +1,16 @@
 version: "1"
 
-databases:
-  - name: infrapulse-db
-    databaseName: infrapulse
-    plan: free
-    region: singapore
-
 services:
   - type: web
     name: infrapulse-backend
     runtime: docker
     plan: free
-    region: singapore
+    region: oregon
     dockerContext: backend
     dockerfilePath: backend/Dockerfile
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: infrapulse-db
-          property: connectionString
+        value: postgresql://crypto_user:0wEJtIJYnBDbriQVCo8mrWoaZYoxFzWm@dpg-dab6qrnavr4c73f00ga0-a/crypto_production_6t4l
       - key: AGENT_SECRET_TOKEN
         value: infrapulse_secret_token_change_in_production
       - key: PROJECT_NAME
