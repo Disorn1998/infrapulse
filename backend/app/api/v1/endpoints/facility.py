@@ -15,7 +15,7 @@ from app.schemas.facility import (
     CapacityForecastResponse,
 )
 from app.services.power_service import get_facility_overview
-from app.services.capacity_service import calculate_capacity_forecast, seed_default_power_logs
+from app.services.capacity_service import calculate_capacity_forecast
 
 router = APIRouter()
 
@@ -47,7 +47,6 @@ def get_capacity_forecast(db: Session = Depends(get_db)):
 @router.get("/power-logs", response_model=List[FacilityPowerLogResponse])
 def list_facility_power_logs(db: Session = Depends(get_db)):
     """Retrieve monthly facility energy audit logs and calculated PUE history."""
-    seed_default_power_logs(db)
     return db.query(FacilityPowerLog).order_by(FacilityPowerLog.log_month.asc()).all()
 
 

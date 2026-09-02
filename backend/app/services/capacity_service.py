@@ -23,48 +23,21 @@ from app.schemas.facility import (
 from app.services.power_service import get_facility_overview
 
 
-def seed_default_power_logs(db: Session) -> None:
-    """Seeds 6 months of realistic historical facility power audit logs if empty."""
-    count = db.query(FacilityPowerLog).count()
-    if count > 0:
-        return
-
-    # Seed 6 months of historical data showing steady PUE optimization
-    sample_logs = [
-        {"month": "2025-10", "facility_kwh": 3120.0, "it_kwh": 2150.0, "cooling_kwh": 650.0, "notes": "Q4 Initial Deployment"},
-        {"month": "2025-11", "facility_kwh": 3280.0, "it_kwh": 2340.0, "cooling_kwh": 630.0, "notes": "Airflow Containment Added"},
-        {"month": "2025-12", "facility_kwh": 3410.0, "it_kwh": 2510.0, "cooling_kwh": 610.0, "notes": "Cold Aisle Optimization"},
-        {"month": "2026-01", "facility_kwh": 3550.0, "it_kwh": 2680.0, "cooling_kwh": 590.0, "notes": "High-Efficiency CRAC Upgrade"},
-        {"month": "2026-02", "facility_kwh": 3690.0, "it_kwh": 2830.0, "cooling_kwh": 580.0, "notes": "BOI Audit Compliance Cycle"},
-        {"month": "2026-03", "facility_kwh": 3820.0, "it_kwh": 2980.0, "cooling_kwh": 570.0, "notes": "Current Operating Period"},
-    ]
-
-    for log in sample_logs:
-        pue = round(log["facility_kwh"] / log["it_kwh"], 3)
-        db_log = FacilityPowerLog(
-            log_month=log["month"],
-            total_facility_kwh=log["facility_kwh"],
-            it_equipment_kwh=log["it_kwh"],
-            calculated_pue=pue,
-            cooling_kwh=log["cooling_kwh"],
-            notes=log["notes"],
-        )
-        db.add(db_log)
-    db.commit()
-
-
 def calculate_capacity_forecast(db: Session) -> CapacityForecastResponse:
     """
     Computes capacity utilization, linear growth regression,
     estimated days to exhaustion, and peak-node drop impact analysis.
     """
-    seed_default_power_logs(db)
-    
     # 1. Fetch current facility overview
     overview = get_facility_overview(db)
     total_capacity = overview.total_power_capacity_watts
     current_power = overview.total_facility_power_watts
     current_util_pct = overview.power_capacity_utilization_percent
+
+    facility_settings = db.query(FacilitySettings).filter(FacilitySettings.id == 1).first()
+    fixed_overhead = facility_settings.fixed_overhead_watts if facility_settings else 250.0
+    cooling_factor = facility_settings.cooling_overhead_factor if facility_settings else 0.25
+    pdu_loss = facility_settings.pdu_loss_factor if facility_settings else 0.05
 
     # 2. Query active hosts and find peak power consumer
     active_hosts = db.query(Host).filter(Host.is_test == False).all()
@@ -85,9 +58,9 @@ def calculate_capacity_forecast(db: Session) -> CapacityForecastResponse:
                 peak_hostname = h.hostname
 
     surviving_it = max(0.0, overview.total_it_power_watts - peak_watts)
-    surviving_facility_power = max(0.0, current_power - peak_watts) # simplified post-drop estimate
+    surviving_facility_power = max(0.0, current_power - peak_watts)
     headroom = max(0.0, total_capacity - surviving_facility_power)
-    is_safe = surviving_facility_power < (total_capacity * 0.80)  # Safe if under 80% breaker continuous rating
+    is_safe = surviving_facility_power < (total_capacity * 0.80)
 
     peak_drop = PeakNodeDropAnalysis(
         peak_node_hostname=peak_hostname,
@@ -102,97 +75,126 @@ def calculate_capacity_forecast(db: Session) -> CapacityForecastResponse:
         ),
     )
 
-    # 3. Time-Series Trend & Linear Regression (y = mx + c)
-    # Query metric history — aggregate total cluster power per hourly bucket
-    hour_bucket = func.date_trunc('hour', Metric.timestamp)
-    metrics = (
-        db.query(hour_bucket.label('hour'), func.sum(Metric.calculated_power_watts))
+    # 3. Time-Series Trend & Linear Regression using REAL historical data
+    day_bucket = func.date_trunc('day', Metric.timestamp)
+    
+    # Get average IT power per host per day, then sum them up per day in python
+    daily_host_avg = (
+        db.query(
+            day_bucket.label('day'),
+            Metric.host_id,
+            func.avg(Metric.calculated_power_watts).label('avg_power')
+        )
         .join(Host, Host.id == Metric.host_id)
         .filter(Host.is_test == False)
         .filter(Metric.calculated_power_watts.isnot(None))
-        .group_by(hour_bucket)
-        .order_by(hour_bucket.asc())
-        .limit(200)
+        .group_by(day_bucket, Metric.host_id)
+        .order_by(day_bucket.asc())
         .all()
     )
 
+    daily_totals: Dict[datetime, float] = {}
+    for row in daily_host_avg:
+        day_ts, host_id, avg_power = row
+        # Convert to UTC if needed
+        if day_ts.tzinfo is None:
+            day_ts = day_ts.replace(tzinfo=timezone.utc)
+            
+        if day_ts not in daily_totals:
+            daily_totals[day_ts] = 0.0
+        daily_totals[day_ts] += float(avg_power)
+
+    # Convert IT power to Facility power
+    historical_points = []
+    for day_ts, it_power in sorted(daily_totals.items()):
+        fac_power = it_power + (it_power * cooling_factor) + (it_power * pdu_loss) + fixed_overhead
+        historical_points.append((day_ts, fac_power))
+
     trend_points: List[TrendDataPoint] = []
-    
-    if len(metrics) >= 2:
-        # Perform Linear Regression on (x_days, y_watts)
-        start_time = metrics[0][0]
+    slope = 0.0
+    intercept = current_power
+
+    if len(historical_points) >= 2:
+        start_time = historical_points[0][0]
         x_vals = []
         y_vals = []
-        for ts, w in metrics:
-            if w is not None:
-                days_diff = (ts - start_time).total_seconds() / 86400.0
-                x_vals.append(days_diff)
-                y_vals.append(float(w))
+        for ts, fac_power in historical_points:
+            days_diff = (ts - start_time).total_seconds() / 86400.0
+            x_vals.append(days_diff)
+            y_vals.append(fac_power)
 
         n = len(x_vals)
-        if n >= 2:
-            sum_x = sum(x_vals)
-            sum_y = sum(y_vals)
-            sum_xy = sum(x * y for x, y in zip(x_vals, y_vals))
-            sum_x2 = sum(x * x for x in x_vals)
-            denom = (n * sum_x2) - (sum_x * sum_x)
-            
-            if abs(denom) > 1e-6:
-                slope = ((n * sum_xy) - (sum_x * sum_y)) / denom
-                intercept = (sum_y - (slope * sum_x)) / n
-            else:
-                slope = 0.5
-                intercept = current_power
-        else:
-            slope = 0.5
-            intercept = current_power
-    else:
-        slope = 1.2  # Baseline gradual adoption slope (1.2 W/day)
-        intercept = max(current_power, 50.0)
-
-    # Clamp regression slope for realistic daily projection (avoiding instantaneous burst skew)
-    clamped_slope = max(-100.0, min(slope, 75.0))
-    if abs(clamped_slope) < 0.1:
-        clamped_slope = 1.5
+        sum_x = sum(x_vals)
+        sum_y = sum(y_vals)
+        sum_xy = sum(x * y for x, y in zip(x_vals, y_vals))
+        sum_x2 = sum(x * x for x in x_vals)
+        denom = (n * sum_x2) - (sum_x * sum_x)
+        
+        if abs(denom) > 1e-6:
+            slope = ((n * sum_xy) - (sum_x * sum_y)) / denom
+            intercept = (sum_y - (slope * sum_x)) / n
 
     # Calculate days to 100% capacity exhaustion
     remaining_watts = total_capacity - current_power
     days_to_exhaustion = None
     exhaustion_date_str = None
     
-    if clamped_slope > 0.05:
-        days_to_exhaustion = max(1, int(remaining_watts / clamped_slope))
+    if slope > 0.05:
+        days_to_exhaustion = max(1, int(remaining_watts / slope))
         target_date = datetime.now(timezone.utc) + timedelta(days=days_to_exhaustion)
         exhaustion_date_str = target_date.strftime("%Y-%m-%d")
-        growth_trend = "RAPID_GROWTH" if clamped_slope > 40.0 else "MODERATE_GROWTH"
+        growth_trend = "RAPID_GROWTH" if slope > 40.0 else "MODERATE_GROWTH"
         recommendation = (
-            f"Power consumption expanding at +{clamped_slope:.2f} W/day. Projected runout date: {exhaustion_date_str} "
+            f"Power consumption expanding at +{slope:.2f} W/day. Projected runout date: {exhaustion_date_str} "
             f"({days_to_exhaustion} days remaining). Current facility headroom is healthy."
         )
-    elif clamped_slope < -0.05:
+    elif slope < -0.05:
         growth_trend = "DECLINING"
         recommendation = "Power consumption is decreasing or optimizing. No capacity exhaustion risk."
     else:
         growth_trend = "STABLE"
-        recommendation = f"Power consumption is highly stable (+{clamped_slope:.2f} W/day). Headroom: {remaining_watts:.1f}W."
+        recommendation = f"Power consumption is highly stable (+{slope:.2f} W/day). Headroom: {remaining_watts:.1f}W."
 
-    # Build 7-day historical & projected trend points (clamped to realistic positive wattage)
-    now = datetime.now(timezone.utc)
-    for i in range(-4, 4):
-        pt_date = now + timedelta(days=i)
-        date_label = pt_date.strftime("%b %d")
-        
-        raw_actual = current_power + (i * clamped_slope * 0.85)
-        raw_projected = current_power + (i * clamped_slope)
-        
-        actual = max(35.0, min(total_capacity, raw_actual)) if i <= 0 else None
-        projected = max(35.0, min(total_capacity * 1.2, raw_projected))
+    # Build trend points based on real data + 3 days future projection
+    now = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    # Add real historical points
+    last_real_ts = now
+    for ts, fac_power in historical_points:
+        # Calculate regression projection for this timestamp
+        days_from_start = (ts - historical_points[0][0]).total_seconds() / 86400.0 if len(historical_points) > 0 else 0
+        proj = intercept + (slope * days_from_start)
         
         trend_points.append(
             TrendDataPoint(
-                timestamp=date_label,
-                actual_power_watts=round(actual, 1) if actual is not None else None,
-                projected_power_watts=round(projected, 1),
+                timestamp=ts.strftime("%b %d"),
+                actual_power_watts=round(fac_power, 1),
+                projected_power_watts=round(proj, 1),
+            )
+        )
+        last_real_ts = ts
+
+    # If no data, at least show current power
+    if not trend_points:
+        trend_points.append(
+            TrendDataPoint(
+                timestamp=now.strftime("%b %d"),
+                actual_power_watts=round(current_power, 1),
+                projected_power_watts=round(current_power, 1),
+            )
+        )
+        last_real_ts = now
+
+    # Add 3 days of future projections
+    for i in range(1, 4):
+        future_date = last_real_ts + timedelta(days=i)
+        days_from_start = (future_date - historical_points[0][0]).total_seconds() / 86400.0 if len(historical_points) > 0 else i
+        proj = intercept + (slope * days_from_start)
+        trend_points.append(
+            TrendDataPoint(
+                timestamp=future_date.strftime("%b %d"),
+                actual_power_watts=None,
+                projected_power_watts=round(max(0, proj), 1),
             )
         )
 
@@ -200,7 +202,7 @@ def calculate_capacity_forecast(db: Session) -> CapacityForecastResponse:
         current_power_load_watts=round(current_power, 2),
         total_capacity_watts=round(total_capacity, 2),
         current_utilization_percent=round(current_util_pct, 2),
-        power_growth_slope_watts_per_day=round(clamped_slope, 2),
+        power_growth_slope_watts_per_day=round(slope, 2),
         estimated_days_to_exhaustion=days_to_exhaustion,
         exhaustion_date=exhaustion_date_str,
         growth_trend=growth_trend,
