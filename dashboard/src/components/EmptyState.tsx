@@ -37,12 +37,14 @@ export const EmptyState: React.FC = () => {
       <h2 className="text-xl font-bold font-mono text-white tracking-tight">
         No Monitored Nodes Connected
       </h2>
-      <p className="text-xs sm:text-sm text-slate-400 mt-1.5 max-w-md mx-auto leading-relaxed">
-        Connect your real server in seconds with our 1-line installer, or launch an instant simulated cluster.
+      <p className="text-xs sm:text-sm text-slate-400 mt-1.5 max-w-lg mx-auto leading-relaxed">
+        ระบบยังไม่มีข้อมูลเซิร์ฟเวอร์เชื่อมต่อเข้ามาในขณะนี้ <br />
+        กรุณาติดตั้ง Agent ลงในเครื่องของคุณด้วยคำสั่ง 1-line installer ด้านล่าง <br/> 
+        หรือกดปุ่มจำลองข้อมูล (Instant Demo) เพื่อทดสอบการทำงานของระบบ
       </p>
 
       {/* Tabs */}
-      <div className="flex items-center justify-center gap-2 mt-6 border-b border-surface-border pb-3">
+      <div className="flex items-center justify-center gap-2 mt-6 border-b border-surface-border pb-3 flex-wrap">
         <button
           onClick={() => setActiveTab('linux')}
           className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
@@ -79,7 +81,7 @@ export const EmptyState: React.FC = () => {
 
       {/* Tab 1: Linux 1-Liner */}
       {activeTab === 'linux' && (
-        <div className="mt-5 text-left bg-background border border-surface-border rounded-xl p-4 font-mono text-xs space-y-3">
+        <div className="mt-5 text-left bg-background border border-surface-border rounded-xl p-4 font-mono text-xs space-y-3 shadow-inner">
           <div className="flex items-center justify-between text-slate-400 text-[11px]">
             <span className="flex items-center gap-1.5 text-cyan-400 font-semibold">
               <Terminal className="w-3.5 h-3.5" />
@@ -97,15 +99,18 @@ export const EmptyState: React.FC = () => {
           <div className="bg-slate-950 p-3 rounded-lg text-emerald-400 border border-slate-800 text-xs overflow-x-auto select-all">
             {linuxCommand}
           </div>
-          <p className="text-[11px] text-slate-500">
-            * Automatically installs dependencies, downloads agent, registers background systemd service, and starts streaming telemetry 24/7.
-          </p>
+          <div className="text-[11px] text-slate-400 space-y-1.5 bg-slate-900/50 p-3 rounded-lg border border-slate-800">
+            <p className="text-cyan-400 font-bold mb-2 text-xs">💡 วิธีการใช้งาน (How to use):</p>
+            <p>1. เปิดหน้าจอ Terminal (SSH) ในเซิร์ฟเวอร์ Linux ของคุณ</p>
+            <p>2. คัดลอกคำสั่งด้านบนไปวางแล้วกด Enter</p>
+            <p>3. ระบบจะทำการติดตั้งแพ็กเกจที่จำเป็น, โหลดสคริปต์ Agent, ลงทะเบียน Systemd Service ให้ทำงานเบื้องหลัง และเริ่มส่งข้อมูล Telemetry กลับมาที่ Dashboard ตลอด 24 ชม. ทันที 🚀</p>
+          </div>
         </div>
       )}
 
       {/* Tab 2: Windows 1-Liner */}
       {activeTab === 'windows' && (
-        <div className="mt-5 text-left bg-background border border-surface-border rounded-xl p-4 font-mono text-xs space-y-3">
+        <div className="mt-5 text-left bg-background border border-surface-border rounded-xl p-4 font-mono text-xs space-y-3 shadow-inner">
           <div className="flex items-center justify-between text-slate-400 text-[11px]">
             <span className="flex items-center gap-1.5 text-cyan-400 font-semibold">
               <Terminal className="w-3.5 h-3.5" />
@@ -123,27 +128,41 @@ export const EmptyState: React.FC = () => {
           <div className="bg-slate-950 p-3 rounded-lg text-cyan-400 border border-slate-800 text-xs overflow-x-auto select-all">
             {windowsCommand}
           </div>
-          <p className="text-[11px] text-slate-500">
-            * Installs required packages, registers Windows Task Scheduler, and begins background transmission automatically.
-          </p>
+          <div className="text-[11px] text-slate-400 space-y-1.5 bg-slate-900/50 p-3 rounded-lg border border-slate-800">
+            <p className="text-cyan-400 font-bold mb-2 text-xs">💡 วิธีการใช้งาน (How to use):</p>
+            <p>1. กดปุ่ม Start พิมพ์ <code>PowerShell</code> แล้วคลิกขวาเลือก <strong>"Run as Administrator"</strong> (สิทธิ์ผู้ดูแลระบบ)</p>
+            <p>2. คัดลอกคำสั่งด้านบนไปวางแล้วกด Enter</p>
+            <p>3. ระบบจะดาวน์โหลด Agent, สร้าง Windows Task Scheduler เพื่อซ่อนหน้าต่างทำงานเบื้องหลังอัตโนมัติทุกครั้งที่เปิดเครื่อง และเริ่มส่งข้อมูลเข้า Dashboard ทันที 🚀</p>
+          </div>
         </div>
       )}
 
       {/* Tab 3: Instant Demo */}
       {activeTab === 'demo' && (
-        <div className="mt-5 bg-gradient-to-br from-purple-950/40 to-slate-900 border border-purple-500/30 rounded-xl p-5 text-center space-y-3">
-          <Sparkles className="w-8 h-8 text-purple-400 mx-auto" />
-          <h3 className="text-sm font-bold text-white">Experience Full Cluster Telemetry Instantly</h3>
-          <p className="text-xs text-slate-300 max-w-sm mx-auto">
-            Click below to populate 4 enterprise server nodes across Feed A and Feed B in your 42U rack.
-          </p>
+        <div className="mt-5 bg-gradient-to-br from-purple-950/40 to-slate-900 border border-purple-500/30 rounded-xl p-6 text-center space-y-4 shadow-inner">
+          <Sparkles className="w-10 h-10 text-purple-400 mx-auto" />
+          <h3 className="text-base font-bold text-white font-mono">Experience Full Cluster Telemetry Instantly</h3>
+          
+          <div className="text-[11px] sm:text-xs text-slate-300 max-w-md mx-auto space-y-2">
+            <p>กดปุ่มด้านล่างเพื่อ <strong>จำลองข้อมูลเซิร์ฟเวอร์ Enterprise ระดับ Data Center จำนวน 5 เครื่อง</strong> เข้าสู่ระบบโดยอัตโนมัติ</p>
+            <div className="bg-purple-950/30 border border-purple-500/20 rounded p-2 text-left">
+              <p className="text-purple-300 font-semibold mb-1">✨ สิ่งที่จะได้เห็นหลังจากการจำลอง:</p>
+              <ul className="list-disc list-inside space-y-1 pl-1 text-slate-400">
+                <li>การแสดงผลผังตู้แร็ค 42U แบบ Multi-Rack </li>
+                <li>การคำนวณ N+1 Redundancy แยกไฟ Feed A / Feed B</li>
+                <li>ระบบทำนาย Capacity Forecast แบบ Linear Regression</li>
+                <li>การกินไฟ (Dynamic PUE) จำลองอิงตามโหลด CPU</li>
+              </ul>
+            </div>
+          </div>
+
           <button
             onClick={handleQuickDemo}
             disabled={isSimulating}
-            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-slate-950 font-mono font-bold text-xs shadow-lg shadow-purple-500/20 transition-all disabled:opacity-50 inline-flex items-center gap-2"
+            className="mt-2 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-slate-950 font-mono font-bold text-xs sm:text-sm shadow-lg shadow-purple-500/20 transition-all disabled:opacity-50 inline-flex items-center justify-center gap-2 w-full sm:w-auto"
           >
             {isSimulating ? <span className="animate-spin">🔄</span> : '🚀'}
-            <span>{isSimulating ? 'Provisioning Cluster...' : 'Launch Instant 4-Node Cluster'}</span>
+            <span>{isSimulating ? 'Provisioning Enterprise Cluster...' : 'Launch Instant 5-Node Demo Cluster'}</span>
           </button>
         </div>
       )}
