@@ -54,6 +54,28 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+from sqlalchemy import text
+from app.core.database import engine
+
+@app.on_event("startup")
+def migrate_db():
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("ALTER TABLE metrics ADD COLUMN cpu_temperature_celsius FLOAT DEFAULT 42.0;"))
+            conn.commit()
+            print("Added cpu_temperature_celsius column")
+        except Exception as e:
+            print(f"Column cpu_temperature_celsius probably exists: {e}")
+            
+        try:
+            conn.execute(text("ALTER TABLE metrics ADD COLUMN load_1m FLOAT;"))
+            conn.execute(text("ALTER TABLE metrics ADD COLUMN load_5m FLOAT;"))
+            conn.execute(text("ALTER TABLE metrics ADD COLUMN load_15m FLOAT;"))
+            conn.commit()
+            print("Added load columns")
+        except Exception as e:
+            print(f"Load columns probably exist: {e}")
+
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
