@@ -9,7 +9,7 @@
 set -e
 
 # Default settings
-SERVER_URL="https://infrapulse-backend.onrender.com/api/v1"
+SERVER_URL="https://infrapulse-backend-fddp.onrender.com/api/v1"
 AGENT_TOKEN="infrapulse_secret_token_change_in_production"
 INTERVAL=30
 INSTALL_DIR="/opt/infrapulse-agent"

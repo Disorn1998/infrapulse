@@ -5,7 +5,7 @@
 # ==============================================================================
 
 param (
-    [string]$ServerUrl = "https://infrapulse-backend.onrender.com/api/v1",
+    [string]$ServerUrl = "https://infrapulse-backend-fddp.onrender.com/api/v1",
     [string]$Token = "infrapulse_secret_token_change_in_production",
     [int]$Interval = 30
 )
