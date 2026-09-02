@@ -25,6 +25,9 @@
 | :---: | :---: |
 | ![Real-Time Telemetry](docs/screenshots/dashboard_telemetry.png) | ![Capacity & Power View](docs/screenshots/dashboard_capacity.png) |
 | *Live node status, CPU/RAM/Temp gauges, and Network RX/TX* | *Capacity Runout Forecast ($y=mx+c$), Multi-Rack Thermal Heatmap & Monthly PUE logs* |
+| **🤖 AI Infrastructure Copilot** | **✨ 1-Line Universal Installers** |
+| ![AI Copilot](docs/screenshots/dashboard_ai.png) | ![Empty State](docs/screenshots/dashboard_empty.png) |
+| *DCIM Health Score, Thermal Hotspot Diagnostics & Power Insights* | *Instant cluster simulation and universal copy-paste installation* |
 
 ---
 
