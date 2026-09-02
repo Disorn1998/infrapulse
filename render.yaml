@@ -1,17 +1,17 @@
 # Render Blueprint for InfraPulse 24/7 Cloud Deployment
 # Docs: https://render.com/docs/blueprint-spec
 
-services:
+databases:
   # -------------------------------------------------------------
   # 1. PostgreSQL Managed Database (Free Tier)
   # -------------------------------------------------------------
-  - type: postgres
-    name: infrapulse-db
+  - name: infrapulse-db
     plan: free
     databaseName: infrapulse
     user: postgres
-    region: singapore # Closest region to Thailand for ultra-low latency
+    region: singapore
 
+services:
   # -------------------------------------------------------------
   # 2. FastAPI Core Backend Service (Free Web Service)
   # -------------------------------------------------------------
@@ -45,24 +45,3 @@ services:
         value: dnaybegtnxmgrolm
       - key: DEFAULT_ALERT_RECIPIENT
         value: disorn.jp@gmail.com
-
-  # -------------------------------------------------------------
-  # 3. React + TypeScript Dashboard (Free Static Site with Global CDN)
-  # -------------------------------------------------------------
-  - type: web
-    name: infrapulse-dashboard
-    plan: free
-    region: singapore
-    env: static
-    buildCommand: cd dashboard && npm install && npm run build
-    staticPublishPath: ./dashboard/dist
-    envVars:
-      - key: VITE_API_BASE_URL
-        fromService:
-          type: web
-          name: infrapulse-backend
-          property: host
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
