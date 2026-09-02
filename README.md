@@ -279,9 +279,21 @@ powershell -ExecutionPolicy Bypass -File deploy\install_windows_task.ps1
 
 ---
 
-## 🌐 Setting Up a Public Live Demo via Cloudflare Tunnel (Free)
+## ☁️ 24/7 Free Cloud Deployment on Render.com (Always Online)
 
-To share a live demo with recruiters or interviewers from anywhere without exposing your home IP or configuring port forwarding:
+To keep your Live Demo permanently accessible 24/7/365 without needing your computer turned on:
+
+1. **Sign in to [Render.com](https://render.com)** using your GitHub account.
+2. Click **New +** $\rightarrow$ **Blueprint**.
+3. Select your repository `Disorn1998/infrapulse` and click **Apply**.
+4. Render automatically provisions the PostgreSQL Database, FastAPI Backend, and React Dashboard for free via [`render.yaml`](render.yaml)!
+*(Read the full step-by-step guide in [docs/CLOUD_DEPLOY_RENDER.md](docs/CLOUD_DEPLOY_RENDER.md))*.
+
+---
+
+## 🌐 Local Live Demo via Cloudflare Tunnel (Free)
+
+To share a live demo directly from your local machine:
 
 1. **Install `cloudflared`:**
    * **Windows:** `winget install Cloudflare.cloudflared`
