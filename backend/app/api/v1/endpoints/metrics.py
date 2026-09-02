@@ -96,6 +96,7 @@ def ingest_metric(
         host.status = "online"
         host.is_test = is_test
         host.last_seen = server_now
+        db.add(host)
 
     # 2. Retrieve or Provision Default Power Configuration and PDU Association
     power_cfg = db.query(PowerConfig).filter(PowerConfig.host_id == host.id).first()
@@ -195,8 +196,8 @@ def ingest_metrics_batch(
             else:
                 host.status = "online"
                 host.is_test = is_test
-                if host.last_seen < sample_time:
-                    host.last_seen = sample_time
+                host.last_seen = server_now
+                db.add(host)
             host_cache[host_id] = host
         else:
             host = host_cache[host_id]
