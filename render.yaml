@@ -1,27 +1,20 @@
-# Render Blueprint for InfraPulse 24/7 Cloud Deployment
-# Docs: https://render.com/docs/blueprint-spec
+version: "1"
 
 databases:
-  # -------------------------------------------------------------
-  # 1. PostgreSQL Managed Database (Free Tier)
-  # -------------------------------------------------------------
   - name: infrapulse-db
-    plan: free
     databaseName: infrapulse
     user: postgres
+    plan: free
     region: singapore
 
 services:
-  # -------------------------------------------------------------
-  # 2. FastAPI Core Backend Service (Free Web Service)
-  # -------------------------------------------------------------
   - type: web
     name: infrapulse-backend
+    runtime: docker
     plan: free
     region: singapore
-    env: docker
-    dockerContext: ./backend
-    dockerfilePath: ./backend/Dockerfile
+    dockerContext: backend
+    dockerfilePath: backend/Dockerfile
     envVars:
       - key: DATABASE_URL
         fromDatabase:
