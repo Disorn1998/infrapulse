@@ -59,8 +59,18 @@ class MonitorAgent:
         buffer_db_path: str = "agent_buffer.db",
         batch_flush_size: int = 100,
     ):
-        self.backend_url = backend_url.rstrip("/")
-        self.batch_url = f"{self.backend_url}/batch"
+        clean_url = backend_url.rstrip("/")
+        if clean_url.endswith("/metrics"):
+            self.metrics_url = clean_url
+            self.batch_url = f"{clean_url}/batch"
+        elif clean_url.endswith("/api/v1"):
+            self.metrics_url = f"{clean_url}/metrics"
+            self.batch_url = f"{clean_url}/metrics/batch"
+        else:
+            self.metrics_url = f"{clean_url}/api/v1/metrics"
+            self.batch_url = f"{clean_url}/api/v1/metrics/batch"
+
+        self.backend_url = self.metrics_url
         self.agent_token = agent_token
         self.interval_seconds = max(5, interval_seconds)
         self.batch_flush_size = batch_flush_size
