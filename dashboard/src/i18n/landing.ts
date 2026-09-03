@@ -1,3 +1,5 @@
+import { EquipmentI18n, equipmentData } from './equipmentData';
+
 export interface LandingTranslation {
   nav: {
     brand: string;
@@ -90,6 +92,7 @@ export interface LandingTranslation {
       note: string;
     };
   };
+  equipment: EquipmentI18n;
   footer: {
     tagline: string;
     standards: string;
@@ -282,6 +285,7 @@ export const landingTranslations: { th: LandingTranslation; en: LandingTranslati
         note: "พารามิเตอร์ URL: ?mode=sandbox",
       },
     },
+    equipment: equipmentData.th,
     footer: {
       tagline: "InfraPulse — Unified Critical Infrastructure & DCIM Monitoring Platform",
       standards: "Compliant with Thailand BOI Green Benchmark (PUE ≤ 1.30), ASHRAE TC 9.9, and NEC 80% Rule",
@@ -472,6 +476,7 @@ export const landingTranslations: { th: LandingTranslation; en: LandingTranslati
         note: "URL Parameter: ?mode=sandbox",
       },
     },
+    equipment: equipmentData.en,
     footer: {
       tagline: "InfraPulse — Unified Critical Infrastructure & DCIM Monitoring Platform",
       standards: "Compliant with Thailand BOI Green Benchmark (PUE ≤ 1.30), ASHRAE TC 9.9, and NEC 80% Rule",

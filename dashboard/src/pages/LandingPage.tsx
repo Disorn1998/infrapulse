@@ -158,8 +158,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToDashboard 
           </div>
         </section>
 
-        {/* 3. 3D ISOMETRIC FACILITY DIAGRAM */}
-        <HeroDiagram lang={lang} />
+        {/* 3. 3D ISOMETRIC FACILITY DIAGRAM & REAL HARDWARE INSPECTOR */}
+        <HeroDiagram lang={lang} t={t} />
 
         {/* 4. WHAT IS A DATA CENTER? (INTRO PROSE) */}
         <section className="bg-gradient-to-r from-ip-elev via-slate-900 to-ip-elev border border-ip-line rounded-3xl p-6 sm:p-10 shadow-xl relative overflow-hidden">
