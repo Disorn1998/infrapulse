@@ -10,6 +10,7 @@ import { EmptyState } from './components/EmptyState';
 import { AlertSettingsModal } from './components/AlertSettingsModal';
 import { ExportReportModal } from './components/ExportReportModal';
 import { AlertsView } from './components/AlertsView';
+import { LandingPage } from './pages/LandingPage';
 import { Host, Metric, FacilityOverview, AiAdvisorResponse } from './types/api';
 import { fetchHosts, fetchHostMetrics, fetchFacilityOverview, fetchAiInsights, fetchAlertConfigs, deleteHost, getWebSocketUrl } from './services/api';
 import { Server, AlertCircle, Activity, Zap, Bot, ShieldAlert } from 'lucide-react';
@@ -17,6 +18,15 @@ import { Server, AlertCircle, Activity, Zap, Bot, ShieldAlert } from 'lucide-rea
 const REFRESH_INTERVAL_SECONDS = 15;
 
 export const App: React.FC = () => {
+  const [currentRoute, setCurrentRoute] = useState<'landing' | 'dashboard'>(() => {
+    const path = window.location.pathname;
+    const params = new URLSearchParams(window.location.search);
+    if (path === '/dashboard' || params.has('mode') || params.get('view') === 'dashboard') {
+      return 'dashboard';
+    }
+    return 'landing';
+  });
+
   const [activeTab, setActiveTab] = useState<'telemetry' | 'capacity' | 'alerts' | 'ai_advisor'>('telemetry');
   const [dataMode, setDataMode] = useState<'live' | 'sandbox'>(() => {
     const params = new URLSearchParams(window.location.search);
@@ -241,24 +251,62 @@ export const App: React.FC = () => {
     }
   };
 
+  // Listen to browser Back / Forward history events
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname;
+      const params = new URLSearchParams(window.location.search);
+      if (path === '/dashboard' || params.has('mode') || params.get('view') === 'dashboard') {
+        setCurrentRoute('dashboard');
+        const modeParam = params.get('mode');
+        if (modeParam === 'live' || modeParam === 'sandbox') {
+          setDataMode(modeParam);
+          loadData(false, modeParam);
+        }
+      } else {
+        setCurrentRoute('landing');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [loadData]);
+
+  const navigateToDashboard = (mode?: 'live' | 'sandbox') => {
+    const targetMode = mode || dataMode || 'sandbox';
+    setDataMode(targetMode);
+    setCurrentRoute('dashboard');
+    try {
+      window.history.pushState(null, '', `/dashboard?mode=${targetMode}`);
+    } catch { /* ignore */ }
+    loadData(false, targetMode);
+  };
+
+  const navigateToLanding = () => {
+    setCurrentRoute('landing');
+    try {
+      window.history.pushState(null, '', '/');
+    } catch { /* ignore */ }
+  };
+
   const handleToggleMode = (newMode: 'live' | 'sandbox') => {
     setDataMode(newMode);
     try {
       const url = new URL(window.location.href);
-      if (newMode === 'live') {
-        url.searchParams.set('mode', 'live');
-      } else {
-        url.searchParams.delete('mode');
-      }
+      url.pathname = '/dashboard';
+      url.searchParams.set('mode', newMode);
       window.history.replaceState(null, '', url.toString());
     } catch { /* ignore non-browser */ }
     loadData(false, newMode);
   };
 
+  if (currentRoute === 'landing') {
+    return <LandingPage onNavigateToDashboard={navigateToDashboard} />;
+  }
+
   const selectedHost = hosts.find((h) => h.id === selectedHostId);
 
   return (
-    <div className="min-h-screen bg-background text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-background text-slate-100 flex flex-col font-sans">
       <Header
         facility={facility}
         countdown={countdown}
@@ -267,6 +315,7 @@ export const App: React.FC = () => {
         activeAlertCount={activeAlertCount}
         dataMode={dataMode}
         onToggleMode={handleToggleMode}
+        onNavigateLanding={navigateToLanding}
         onManualRefresh={handleManualRefresh}
         onOpenSettings={() => setIsAlertModalOpen(true)}
         onOpenExport={() => setIsExportModalOpen(true)}

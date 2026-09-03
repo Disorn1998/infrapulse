@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefreshCw, Server, Settings, FileSpreadsheet, Bell } from 'lucide-react';
+import { RefreshCw, Server, Settings, FileSpreadsheet, Bell, BookOpen } from 'lucide-react';
 import { FacilityOverview } from '../types/api';
 
 interface HeaderProps {
@@ -10,6 +10,7 @@ interface HeaderProps {
   activeAlertCount?: number;
   dataMode?: 'live' | 'sandbox';
   onToggleMode?: (mode: 'live' | 'sandbox') => void;
+  onNavigateLanding?: () => void;
   onManualRefresh: () => void;
   onOpenSettings?: () => void;
   onOpenExport?: () => void;
@@ -24,6 +25,7 @@ export const Header: React.FC<HeaderProps> = ({
   activeAlertCount = 0,
   dataMode = 'sandbox',
   onToggleMode,
+  onNavigateLanding,
   onManualRefresh,
   onOpenSettings,
   onOpenExport,
@@ -121,6 +123,18 @@ export const Header: React.FC<HeaderProps> = ({
             <span>🎮 Sim Lab</span>
           </button>
         </div>
+      )}
+
+      {/* Link back to DC Primer / Landing Page */}
+      {onNavigateLanding && (
+        <button
+          onClick={onNavigateLanding}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono text-xs font-semibold text-slate-300 hover:text-cyan-300 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 transition-all shadow-sm"
+          title="What is a Data Center? (DCIM Primer & Architecture)"
+        >
+          <BookOpen className="w-3.5 h-3.5 text-cyan-400" />
+          <span className="hidden sm:inline">📘 DC Primer</span>
+        </button>
       )}
 
       {/* Global Status, Actions & Auto-Refresh Bar */}
