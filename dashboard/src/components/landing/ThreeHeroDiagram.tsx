@@ -11,7 +11,7 @@ interface ThreeHeroDiagramProps {
   t: LandingTranslation;
 }
 
-type CameraViewMode = 'iso' | 'cold' | 'hot' | 'top';
+type CameraViewMode = 'iso' | 'racks' | 'power' | 'top';
 
 export const ThreeHeroDiagram: React.FC<ThreeHeroDiagramProps> = ({
   lang,
@@ -33,16 +33,16 @@ export const ThreeHeroDiagram: React.FC<ThreeHeroDiagramProps> = ({
     if (!container) return;
 
     const width = container.clientWidth;
-    const height = container.clientHeight || 540;
+    const height = container.clientHeight || 560;
 
     // 1. Scene setup
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x070b12);
-    scene.fog = new THREE.FogExp2(0x070b12, 0.022);
+    scene.background = new THREE.Color(0x0a0e17);
+    scene.fog = new THREE.FogExp2(0x0a0e17, 0.018);
 
     // 2. Camera setup
-    const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
-    camera.position.set(11, 8.5, 14);
+    const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 120);
+    camera.position.set(16, 13, 19);
     cameraRef.current = camera;
 
     // 3. Renderer setup
@@ -54,26 +54,26 @@ export const ThreeHeroDiagram: React.FC<ThreeHeroDiagramProps> = ({
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.25;
+    renderer.toneMappingExposure = 1.3;
     container.appendChild(renderer.domElement);
 
-    // 4. Orbit Controls (Smooth & Stable)
+    // 4. Orbit Controls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.06;
     controls.rotateSpeed = 0.75;
     controls.zoomSpeed = 0.8;
     controls.panSpeed = 0.5;
-    controls.maxPolarAngle = Math.PI / 2 - 0.06; // Prevent diving under floor
+    controls.maxPolarAngle = Math.PI / 2 - 0.05; // Prevent diving under floor
     controls.minPolarAngle = Math.PI / 12;
-    controls.minDistance = 6;
-    controls.maxDistance = 26;
-    controls.target.set(0.5, 1.8, 0); // Focus center of the equipment row
+    controls.minDistance = 8;
+    controls.maxDistance = 35;
+    controls.target.set(0, 1.8, 0);
     controls.autoRotate = false;
     controls.autoRotateSpeed = 0.8;
     controlsRef.current = controls;
 
-    // Stop auto-rotate immediately when user touches / drags
+    // Auto-pause auto-rotate when user drags
     const onPointerDown = () => {
       if (controls.autoRotate) {
         controls.autoRotate = false;
@@ -82,294 +82,380 @@ export const ThreeHeroDiagram: React.FC<ThreeHeroDiagramProps> = ({
     };
     renderer.domElement.addEventListener('pointerdown', onPointerDown);
 
-    // 5. Lighting Setup (Bright, clean, enterprise data center look)
-    const ambientLight = new THREE.AmbientLight(0x1e293b, 2.5);
+    // 5. Lighting (Clean Data Center White & Neon Highlights)
+    const ambientLight = new THREE.AmbientLight(0x334155, 2.6);
     scene.add(ambientLight);
 
-    const mainLight = new THREE.DirectionalLight(0xffffff, 2.8);
-    mainLight.position.set(12, 22, 14);
-    scene.add(mainLight);
+    const mainSun = new THREE.DirectionalLight(0xffffff, 2.5);
+    mainSun.position.set(15, 25, 18);
+    scene.add(mainSun);
 
-    const fillLight = new THREE.DirectionalLight(0x38bdf8, 1.2);
-    fillLight.position.set(-14, 15, -10);
-    scene.add(fillLight);
+    const rearSun = new THREE.DirectionalLight(0x94a3b8, 1.2);
+    rearSun.position.set(-15, 18, -15);
+    scene.add(rearSun);
 
-    // Cold Aisle Cyan Light
-    const coldAisleLight = new THREE.PointLight(0x06b6d4, 3.5, 12);
-    coldAisleLight.position.set(0, 3.0, 2.5);
-    scene.add(coldAisleLight);
+    // Cold Aisle Blue Point Light
+    const coldLight = new THREE.PointLight(0x0284c7, 4.0, 15);
+    coldLight.position.set(0, 3.2, 0);
+    scene.add(coldLight);
 
     // Hot Aisle Rose Light
-    const hotAisleLight = new THREE.PointLight(0xf43f5e, 3.0, 12);
-    hotAisleLight.position.set(0, 3.0, -2.5);
-    scene.add(hotAisleLight);
-
-    // UPS Area Amber Light
-    const upsLight = new THREE.PointLight(0x10b981, 2.2, 10);
-    upsLight.position.set(4.8, 3.0, 0);
-    scene.add(upsLight);
-
-    // 6. Data Center Raised Floor Platform (Clean, High-Tech Tiles)
-    const platformGeo = new THREE.BoxGeometry(15, 0.4, 11);
-    const platformMat = new THREE.MeshStandardMaterial({
-      color: 0x0f172a,
-      roughness: 0.7,
-      metalness: 0.3,
-    });
-    const platform = new THREE.Mesh(platformGeo, platformMat);
-    platform.position.y = -0.2;
-    scene.add(platform);
-
-    // Grid on top of floor
-    const gridHelper = new THREE.GridHelper(14, 14, 0x0284c7, 0x1e293b);
-    gridHelper.position.y = 0.01;
-    scene.add(gridHelper);
-
-    // Floor Marker: COLD AISLE (Blue Zone in front)
-    const coldZoneGeo = new THREE.PlaneGeometry(8.5, 3.0);
-    const coldZoneMat = new THREE.MeshBasicMaterial({
-      color: 0x0284c7,
-      transparent: true,
-      opacity: 0.18,
-    });
-    const coldZone = new THREE.Mesh(coldZoneGeo, coldZoneMat);
-    coldZone.rotation.x = -Math.PI / 2;
-    coldZone.position.set(0, 0.02, 2.2);
-    scene.add(coldZone);
-
-    // Floor Marker: HOT AISLE (Red Zone in back)
-    const hotZoneGeo = new THREE.PlaneGeometry(8.5, 3.0);
-    const hotZoneMat = new THREE.MeshBasicMaterial({
-      color: 0xbe123c,
-      transparent: true,
-      opacity: 0.16,
-    });
-    const hotZone = new THREE.Mesh(hotZoneGeo, hotZoneMat);
-    hotZone.rotation.x = -Math.PI / 2;
-    hotZone.position.set(0, 0.02, -2.2);
-    scene.add(hotZone);
-
-    // Glowing Power Busway Conduits Underfloor
-    const makeConduit = (points: THREE.Vector3[], colorHex: number) => {
-      const curve = new THREE.CatmullRomCurve3(points);
-      const tubeGeo = new THREE.TubeGeometry(curve, 24, 0.07, 8, false);
-      const tubeMat = new THREE.MeshBasicMaterial({ color: colorHex });
-      scene.add(new THREE.Mesh(tubeGeo, tubeMat));
-    };
-
-    // Feed A (Cyan)
-    makeConduit([
-      new THREE.Vector3(-6.5, 0.03, 3.2),
-      new THREE.Vector3(-2.2, 0.03, 1.2),
-      new THREE.Vector3(4.8, 0.03, 1.2),
-    ], 0x06b6d4);
-
-    // Feed B (Emerald)
-    makeConduit([
-      new THREE.Vector3(-6.5, 0.03, -3.2),
-      new THREE.Vector3(2.2, 0.03, -1.2),
-      new THREE.Vector3(4.8, 0.03, -1.2),
-    ], 0x10b981);
+    const hotLight = new THREE.PointLight(0xf43f5e, 3.0, 14);
+    hotLight.position.set(0, 3.2, -3.2);
+    scene.add(hotLight);
 
     // Clickable interactive objects
     const clickableObjects: THREE.Object3D[] = [];
 
-    // Helper: Build a 42U Server Rack (Clean Enterprise NetShelter Style)
-    const createRack = (id: string, posX: number, primaryColor: number) => {
-      const rackGroup = new THREE.Group();
-      rackGroup.name = id;
+    // 6. Data Center Raised Floor (18m x 14m)
+    const floorGeo = new THREE.BoxGeometry(19, 0.4, 15);
+    const floorMat = new THREE.MeshStandardMaterial({
+      color: 0x0f172a,
+      roughness: 0.6,
+      metalness: 0.3,
+    });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.position.y = -0.2;
+    scene.add(floor);
 
-      // Dark Matte Frame
-      const frameGeo = new THREE.BoxGeometry(1.9, 4.2, 2.2);
-      const frameMat = new THREE.MeshStandardMaterial({
-        color: 0x111827,
-        roughness: 0.4,
-        metalness: 0.8,
-      });
-      const rackFrame = new THREE.Mesh(frameGeo, frameMat);
-      rackFrame.position.y = 2.1;
-      rackGroup.add(rackFrame);
+    // Floor Tile Grid Lines
+    const floorGrid = new THREE.GridHelper(18, 18, 0x0284c7, 0x1e293b);
+    floorGrid.position.y = 0.01;
+    scene.add(floorGrid);
 
-      // 8x 2U Server Blades inside
-      for (let i = 0; i < 8; i++) {
-        const bladeGeo = new THREE.BoxGeometry(1.65, 0.36, 2.15);
-        const bladeMat = new THREE.MeshStandardMaterial({
-          color: 0x1f2937,
-          roughness: 0.3,
-          metalness: 0.9,
-        });
-        const blade = new THREE.Mesh(bladeGeo, bladeMat);
-        blade.position.set(0, 0.65 + i * 0.44, 0.02);
-        rackGroup.add(blade);
+    // 7. Cutaway Room Walls (Rear wall, Right wall, and Left partition)
+    const wallMat = new THREE.MeshStandardMaterial({
+      color: 0x1e293b,
+      roughness: 0.8,
+      metalness: 0.1,
+    });
 
-        // Front HDD Bays / Grille line
-        const grilleGeo = new THREE.BoxGeometry(1.2, 0.12, 0.02);
-        const grilleMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
-        const grille = new THREE.Mesh(grilleGeo, grilleMat);
-        grille.position.set(0.1, 0.65 + i * 0.44, 1.11);
-        rackGroup.add(grille);
+    // Rear Wall
+    const rearWallGeo = new THREE.BoxGeometry(19, 4.8, 0.3);
+    const rearWall = new THREE.Mesh(rearWallGeo, wallMat);
+    rearWall.position.set(0, 2.4, -7.4);
+    scene.add(rearWall);
 
-        // Front Status LEDs (Green, Cyan, Blue)
-        const ledGeo = new THREE.SphereGeometry(0.028, 6, 6);
-        const ledMat1 = new THREE.MeshBasicMaterial({ color: 0x10b981 });
-        const ledMat2 = new THREE.MeshBasicMaterial({ color: primaryColor });
-        const led1 = new THREE.Mesh(ledGeo, ledMat1);
-        const led2 = new THREE.Mesh(ledGeo, ledMat2);
-        led1.position.set(-0.62, 0.65 + i * 0.44, 1.11);
-        led2.position.set(-0.52, 0.65 + i * 0.44, 1.11);
-        rackGroup.add(led1);
-        rackGroup.add(led2);
-      }
+    // Right Wall
+    const rightWallGeo = new THREE.BoxGeometry(0.3, 4.8, 15);
+    const rightWall = new THREE.Mesh(rightWallGeo, wallMat);
+    rightWall.position.set(9.4, 2.4, 0);
+    scene.add(rightWall);
 
-      // Vertical 0U PDU on Rear Post
-      const pduGeo = new THREE.BoxGeometry(0.1, 3.6, 0.1);
-      const pduMat = new THREE.MeshStandardMaterial({
-        color: primaryColor,
-        emissive: primaryColor,
+    // Left UPS Room Partition Wall (with doorway)
+    const leftWallGeo = new THREE.BoxGeometry(0.2, 4.8, 9);
+    const leftWall = new THREE.Mesh(leftWallGeo, wallMat);
+    leftWall.position.set(-4.8, 2.4, -2.8);
+    scene.add(leftWall);
+
+    // Helper: Create Floating 3D Number Pin (❶ to ❽)
+    const createPin = (_number: number, posX: number, posY: number, posZ: number, zoneId: string, colorHex: number) => {
+      const pinGroup = new THREE.Group();
+      pinGroup.name = zoneId;
+
+      // Pin Disc
+      const discGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.12, 24);
+      const discMat = new THREE.MeshStandardMaterial({
+        color: colorHex,
+        emissive: colorHex,
         emissiveIntensity: 0.6,
+        roughness: 0.2,
       });
-      const pdu = new THREE.Mesh(pduGeo, pduMat);
-      pdu.position.set(0.85, 2.1, -1.05);
-      rackGroup.add(pdu);
+      const disc = new THREE.Mesh(discGeo, discMat);
+      disc.rotation.x = Math.PI / 2;
+      pinGroup.add(disc);
 
-      rackGroup.position.set(posX, 0, 0);
-      scene.add(rackGroup);
-      clickableObjects.push(rackFrame);
-      return rackGroup;
+      // Pin Glow Ring
+      const ringGeo = new THREE.RingGeometry(0.48, 0.58, 24);
+      const ringMat = new THREE.MeshBasicMaterial({ color: colorHex, side: THREE.DoubleSide });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      pinGroup.add(ring);
+
+      // Pin Vertical Pointer Stalk
+      const stalkGeo = new THREE.CylinderGeometry(0.04, 0.02, 1.2, 8);
+      const stalkMat = new THREE.MeshBasicMaterial({ color: colorHex });
+      const stalk = new THREE.Mesh(stalkGeo, stalkMat);
+      stalk.position.y = -0.7;
+      pinGroup.add(stalk);
+
+      pinGroup.position.set(posX, posY, posZ);
+      scene.add(pinGroup);
+      clickableObjects.push(disc);
+      return pinGroup;
     };
 
-    // 1. Compute Rack A (Left, x = -2.2)
-    createRack('rack-a', -2.2, 0x06b6d4);
+    // Helper: Server Rack Row (Zone 1: Server Rack Area & Zone 4: Hot/Cold Aisle)
+    const serverGroup = new THREE.Group();
+    serverGroup.name = 'server-rack';
 
-    // 2. In-Row Precision Cooling Unit (Center, x = 0.0)
-    const coolerGroup = new THREE.Group();
-    coolerGroup.name = 'cooling';
+    const createRackCabinet = (posX: number, posZ: number, rotY: number) => {
+      const rack = new THREE.Group();
+      // Cabinet Frame
+      const boxGeo = new THREE.BoxGeometry(1.6, 4.0, 1.8);
+      const boxMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.4, metalness: 0.8 });
+      const box = new THREE.Mesh(boxGeo, boxMat);
+      box.position.y = 2.0;
+      rack.add(box);
 
-    const coolerGeo = new THREE.BoxGeometry(1.3, 4.2, 2.2);
-    const coolerMat = new THREE.MeshStandardMaterial({
-      color: 0x0284c7,
-      roughness: 0.25,
-      metalness: 0.75,
-      emissive: 0x0369a1,
-      emissiveIntensity: 0.25,
-    });
-    const coolerMesh = new THREE.Mesh(coolerGeo, coolerMat);
-    coolerMesh.position.y = 2.1;
-    coolerGroup.add(coolerMesh);
+      // Server Blade Slots & LEDs
+      for (let s = 0; s < 7; s++) {
+        const bladeG = new THREE.BoxGeometry(1.4, 0.35, 1.75);
+        const bladeM = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.3, metalness: 0.9 });
+        const blade = new THREE.Mesh(bladeG, bladeM);
+        blade.position.set(0, 0.6 + s * 0.45, 0.02);
+        rack.add(blade);
 
-    // Rotating EC Fan Turbine on Front
-    const fanGroup = new THREE.Group();
-    fanGroup.position.set(0, 2.1, 1.11);
-    for (let b = 0; b < 6; b++) {
-      const bladeGeo = new THREE.BoxGeometry(0.08, 0.5, 0.02);
-      const bladeMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
-      const blade = new THREE.Mesh(bladeGeo, bladeMat);
-      blade.rotation.z = (b * Math.PI) / 3;
-      fanGroup.add(blade);
+        // Blinking LED Points
+        const ledG = new THREE.SphereGeometry(0.025, 6, 6);
+        const ledM1 = new THREE.MeshBasicMaterial({ color: s % 2 === 0 ? 0x10b981 : 0x06b6d4 });
+        const led1 = new THREE.Mesh(ledG, ledM1);
+        led1.position.set(-0.55, 0.6 + s * 0.45, 0.91);
+        rack.add(led1);
+      }
+
+      rack.position.set(posX, 0, posZ);
+      rack.rotation.y = rotY;
+      serverGroup.add(rack);
+      clickableObjects.push(box);
+    };
+
+    // Row 1 (Front, facing into aisle)
+    for (let i = -1; i <= 1; i++) {
+      createRackCabinet(i * 1.9, 1.3, 0);
     }
-    coolerGroup.add(fanGroup);
-
-    // Fan Outer Ring
-    const ringGeo = new THREE.RingGeometry(0.48, 0.54, 32);
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0x7dd3fc, side: THREE.DoubleSide });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.position.set(0, 2.1, 1.115);
-    coolerGroup.add(ring);
-
-    // Digital Temperature Display on Chiller
-    const screenGeo = new THREE.PlaneGeometry(0.7, 0.3);
-    const screenMat = new THREE.MeshBasicMaterial({ color: 0x0c4a6e });
-    const screen = new THREE.Mesh(screenGeo, screenMat);
-    screen.position.set(0, 3.6, 1.11);
-    coolerGroup.add(screen);
-
-    coolerGroup.position.set(0, 0, 0);
-    scene.add(coolerGroup);
-    clickableObjects.push(coolerMesh);
-
-    // 3. Compute Rack B (Right, x = 2.2)
-    createRack('rack-b', 2.2, 0x10b981);
-
-    // 4. Modular 2N UPS & Battery Bank (Power Bay, x = 4.8)
-    const upsGroup = new THREE.Group();
-    upsGroup.name = 'ups';
-
-    const upsGeo = new THREE.BoxGeometry(1.8, 3.9, 2.2);
-    const upsMat = new THREE.MeshStandardMaterial({
-      color: 0x1f2937,
-      roughness: 0.5,
-      metalness: 0.7,
-    });
-    const upsMesh = new THREE.Mesh(upsGeo, upsMat);
-    upsMesh.position.y = 1.95;
-    upsGroup.add(upsMesh);
-
-    // Battery LED bar meters
-    for (let l = 0; l < 5; l++) {
-      const barG = new THREE.BoxGeometry(0.5, 0.07, 0.02);
-      const barM = new THREE.MeshBasicMaterial({ color: l === 4 ? 0xf59e0b : 0x10b981 });
-      const bar = new THREE.Mesh(barG, barM);
-      bar.position.set(0, 1.3 + l * 0.28, 1.11);
-      upsGroup.add(bar);
+    // Row 2 (Rear, facing into aisle)
+    for (let i = -1; i <= 1; i++) {
+      createRackCabinet(i * 1.9, -1.3, Math.PI);
     }
+    scene.add(serverGroup);
 
-    upsGroup.position.set(4.8, 0, 0);
-    scene.add(upsGroup);
-    clickableObjects.push(upsMesh);
-
-    // 5. Containment Pod (Glass Doors and Clear Ceiling)
+    // ZONE 4: Hot/Cold Aisle Containment Canopy over the rack aisle
     const containmentGroup = new THREE.Group();
     containmentGroup.name = 'containment';
-
-    // Translucent ceiling over cold aisle
-    const roofGeo = new THREE.BoxGeometry(7.0, 0.06, 3.2);
+    // Polycarbonate Roof
+    const roofGeo = new THREE.BoxGeometry(6.2, 0.06, 2.8);
     const roofMat = new THREE.MeshPhysicalMaterial({
       color: 0x38bdf8,
       transparent: true,
-      opacity: 0.35,
-      roughness: 0.1,
+      opacity: 0.38,
       transmission: 0.85,
     });
     const roof = new THREE.Mesh(roofGeo, roofMat);
-    roof.position.set(0, 4.25, 0);
+    roof.position.set(0, 4.05, 0);
     containmentGroup.add(roof);
 
-    // Left and Right Glass Sliding Doors
-    const doorGeo = new THREE.BoxGeometry(1.6, 4.2, 0.05);
-    const doorMat = new THREE.MeshPhysicalMaterial({
-      color: 0xbae6fd,
-      transparent: true,
-      opacity: 0.3,
-      roughness: 0.1,
-      transmission: 0.9,
-    });
-    const doorLeft = new THREE.Mesh(doorGeo, doorMat);
-    const doorRight = new THREE.Mesh(doorGeo, doorMat);
-    doorLeft.position.set(-3.4, 2.1, 1.5);
-    doorRight.position.set(3.4, 2.1, 1.5);
-    containmentGroup.add(doorLeft);
-    containmentGroup.add(doorRight);
-
+    // Aisle End Sliding Glass Doors
+    const doorGeo = new THREE.BoxGeometry(0.06, 4.0, 1.3);
+    const doorMat = new THREE.MeshPhysicalMaterial({ color: 0xbae6fd, transparent: true, opacity: 0.35 });
+    const door1 = new THREE.Mesh(doorGeo, doorMat);
+    const door2 = new THREE.Mesh(doorGeo, doorMat);
+    door1.position.set(-3.05, 2.0, 0);
+    door2.position.set(3.05, 2.0, 0);
+    containmentGroup.add(door1);
+    containmentGroup.add(door2);
     scene.add(containmentGroup);
     clickableObjects.push(roof);
 
-    // 6. Airflow Dynamic Particles
-    // Cold Air Particles (Cyan, flowing out of In-Row Cooler into Cold Aisle)
+    // ZONE 2: UPS & Battery Room (Enclosed Left Bay, x = -6.8)
+    const upsGroup = new THREE.Group();
+    upsGroup.name = 'ups-battery';
+    for (let u = 0; u < 3; u++) {
+      const uGeo = new THREE.BoxGeometry(1.6, 3.8, 1.8);
+      const uMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.5, metalness: 0.7 });
+      const uMesh = new THREE.Mesh(uGeo, uMat);
+      uMesh.position.set(-6.8, 1.9, -4.5 + u * 2.2);
+      upsGroup.add(uMesh);
+      clickableObjects.push(uMesh);
+
+      // Battery LED Bars
+      for (let b = 0; b < 5; b++) {
+        const barG = new THREE.BoxGeometry(0.4, 0.06, 0.02);
+        const barM = new THREE.MeshBasicMaterial({ color: 0x10b981 });
+        const bar = new THREE.Mesh(barG, barM);
+        bar.position.set(-6.8, 1.2 + b * 0.28, -3.58 + u * 2.2);
+        upsGroup.add(bar);
+      }
+    }
+    scene.add(upsGroup);
+
+    // ZONE 3: Precision Air Conditioning (Perimeter CRAH on Right Wall, x = 7.8)
+    const crahGroup = new THREE.Group();
+    crahGroup.name = 'cooling';
+    const fanBlades: THREE.Group[] = [];
+
+    for (let c = 0; c < 2; c++) {
+      const cGeo = new THREE.BoxGeometry(1.6, 4.2, 2.4);
+      const cMat = new THREE.MeshStandardMaterial({
+        color: 0x0284c7,
+        roughness: 0.3,
+        metalness: 0.7,
+        emissive: 0x0369a1,
+        emissiveIntensity: 0.2,
+      });
+      const cMesh = new THREE.Mesh(cGeo, cMat);
+      cMesh.position.set(7.8, 2.1, -3.0 + c * 4.2);
+      crahGroup.add(cMesh);
+      clickableObjects.push(cMesh);
+
+      // Rotating Fan on CRAH
+      const fanG = new THREE.Group();
+      fanG.position.set(7.0, 2.1, -3.0 + c * 4.2);
+      fanG.rotation.y = Math.PI / 2;
+      for (let fb = 0; fb < 6; fb++) {
+        const fBlade = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 0.02), new THREE.MeshBasicMaterial({ color: 0x7dd3fc }));
+        fBlade.rotation.z = (fb * Math.PI) / 3;
+        fanG.add(fBlade);
+      }
+      crahGroup.add(fanG);
+      fanBlades.push(fanG);
+    }
+    scene.add(crahGroup);
+
+    // ZONE 5: Fire Suppression System (Red Novec/FM-200 Cylinders & Red Pipe along Rear Wall)
+    const fireGroup = new THREE.Group();
+    fireGroup.name = 'fire-suppression';
+
+    // Red Overhead Pipe Manifold
+    const pipeGeo = new THREE.CylinderGeometry(0.08, 0.08, 16, 12);
+    const pipeMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, metalness: 0.8, roughness: 0.2 });
+    const firePipe = new THREE.Mesh(pipeGeo, pipeMat);
+    firePipe.rotation.z = Math.PI / 2;
+    firePipe.position.set(0, 4.4, -6.8);
+    fireGroup.add(firePipe);
+
+    // 4x Red & Green Cylinders mounted to wall
+    for (let cyl = 0; cyl < 4; cyl++) {
+      const cylGeo = new THREE.CylinderGeometry(0.28, 0.28, 2.2, 16);
+      const cylMat = new THREE.MeshStandardMaterial({
+        color: cyl === 0 ? 0x16a34a : 0xdc2626,
+        roughness: 0.3,
+        metalness: 0.7,
+      });
+      const tank = new THREE.Mesh(cylGeo, cylMat);
+      tank.position.set(-2.4 + cyl * 0.8, 1.3, -7.0);
+      fireGroup.add(tank);
+      clickableObjects.push(tank);
+
+      // Top Brass Valve
+      const valveG = new THREE.CylinderGeometry(0.06, 0.06, 0.3, 8);
+      const valveM = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.9, roughness: 0.1 });
+      const valve = new THREE.Mesh(valveG, valveM);
+      valve.position.set(-2.4 + cyl * 0.8, 2.5, -7.0);
+      fireGroup.add(valve);
+    }
+    scene.add(fireGroup);
+
+    // ZONE 6: Monitoring & DCIM (NOC Command Desk & Monitor Wall, Front Left, x = -5.8, z = 4.2)
+    const nocGroup = new THREE.Group();
+    nocGroup.name = 'dcim-noc';
+    // Desk
+    const deskGeo = new THREE.BoxGeometry(2.8, 0.8, 1.2);
+    const deskMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.4 });
+    const desk = new THREE.Mesh(deskGeo, deskMat);
+    desk.position.set(-5.8, 0.4, 4.2);
+    nocGroup.add(desk);
+    clickableObjects.push(desk);
+
+    // Multi-Monitor Array on Desk (3 glowing curved monitors)
+    for (let m = -1; m <= 1; m++) {
+      const scrGeo = new THREE.BoxGeometry(0.7, 0.45, 0.04);
+      const scrMat = new THREE.MeshBasicMaterial({ color: 0x06b6d4 });
+      const scr = new THREE.Mesh(scrGeo, scrMat);
+      scr.position.set(-5.8 + m * 0.8, 1.1, 4.2);
+      scr.rotation.y = m * -0.2;
+      nocGroup.add(scr);
+    }
+    scene.add(nocGroup);
+
+    // ZONE 7: Network Room / Core Switch Cabinets (Rear Right, x = 6.2, z = -5.2)
+    const netGroup = new THREE.Group();
+    netGroup.name = 'network-room';
+    const netRackGeo = new THREE.BoxGeometry(1.6, 4.0, 1.8);
+    const netRackMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.5, metalness: 0.8 });
+    const netRack = new THREE.Mesh(netRackGeo, netRackMat);
+    netRack.position.set(6.2, 2.0, -5.2);
+    netGroup.add(netRack);
+    clickableObjects.push(netRack);
+
+    // Glowing Fiber Optic Port Arrays
+    for (let f = 0; f < 5; f++) {
+      const fpGeo = new THREE.BoxGeometry(1.4, 0.1, 0.02);
+      const fpMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+      const fp = new THREE.Mesh(fpGeo, fpMat);
+      fp.position.set(6.2, 1.5 + f * 0.4, -4.29);
+      netGroup.add(fp);
+    }
+
+    // Overhead Yellow Fiber Raceway (FiberGuide) from Racks to Network Room
+    const trayGeo = new THREE.BoxGeometry(0.3, 0.1, 6.0);
+    const trayMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.4 });
+    const tray = new THREE.Mesh(trayGeo, trayMat);
+    tray.position.set(3.2, 4.2, -2.5);
+    netGroup.add(tray);
+
+    scene.add(netGroup);
+
+    // ZONE 8: Access Control & Security Entrance (Front Center, z = 6.8)
+    const secGroup = new THREE.Group();
+    secGroup.name = 'security-access';
+
+    // Front Sliding Glass Airlock Doors
+    const secDoorGeo = new THREE.BoxGeometry(2.4, 4.0, 0.1);
+    const secDoorMat = new THREE.MeshPhysicalMaterial({
+      color: 0xbae6fd,
+      transparent: true,
+      opacity: 0.4,
+      metalness: 0.8,
+      roughness: 0.1,
+    });
+    const secDoor = new THREE.Mesh(secDoorGeo, secDoorMat);
+    secDoor.position.set(0, 2.0, 7.0);
+    secGroup.add(secDoor);
+    clickableObjects.push(secDoor);
+
+    // Biometric Scanner Terminal next to Door
+    const bioGeo = new THREE.BoxGeometry(0.2, 0.4, 0.08);
+    const bioMat = new THREE.MeshBasicMaterial({ color: 0x06b6d4 });
+    const bio = new THREE.Mesh(bioGeo, bioMat);
+    bio.position.set(1.5, 1.6, 7.0);
+    secGroup.add(bio);
+
+    // Ceiling Dome CCTV Camera
+    const camGeo = new THREE.SphereGeometry(0.12, 12, 12, 0, Math.PI * 2, 0, Math.PI / 2);
+    const camMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.2 });
+    const camMesh = new THREE.Mesh(camGeo, camMat);
+    camMesh.position.set(0, 4.4, 6.5);
+    camMesh.rotation.x = Math.PI;
+    secGroup.add(camMesh);
+
+    scene.add(secGroup);
+
+    // 8. Interactive Numbered 3D Floating Pins (❶ to ❽ matching reference poster)
+    createPin(1, 0, 5.0, 0, 'server-rack', 0x0284c7);      // ❶ Blue: Server Rack Area
+    createPin(2, -6.8, 4.8, -3.5, 'ups-battery', 0x16a34a); // ❷ Green: UPS & Battery Room
+    createPin(3, 7.8, 5.2, -1.0, 'cooling', 0x0284c7);       // ❸ Light Blue: Precision Cooling
+    createPin(4, 0, 5.0, 1.8, 'containment', 0xf97316);     // ❹ Orange: Hot/Cold Aisle
+    createPin(5, -1.2, 4.8, -6.8, 'fire-suppression', 0xdc2626); // ❺ Red: Fire Suppression
+    createPin(6, -5.8, 2.8, 4.2, 'dcim-noc', 0x9333ea);     // ❻ Purple: Monitoring & DCIM
+    createPin(7, 6.2, 4.8, -5.2, 'network-room', 0xb45309);  // ❼ Brown: Network Room
+    createPin(8, 0, 4.6, 6.8, 'security-access', 0x64748b);  // ❽ Grey: Access Control & Security
+
+    // 9. Airflow Dynamic Particles in Cold Aisle
     const coldCount = 100;
     const coldGeo = new THREE.BufferGeometry();
     const coldPos = new Float32Array(coldCount * 3);
     const coldVel: THREE.Vector3[] = [];
 
     for (let p = 0; p < coldCount; p++) {
-      coldPos[p * 3] = (Math.random() - 0.5) * 0.8;
-      coldPos[p * 3 + 1] = 1.0 + Math.random() * 2.4;
-      coldPos[p * 3 + 2] = 1.1 + Math.random() * 0.3;
-      coldVel.push(new THREE.Vector3((Math.random() - 0.5) * 0.015, (Math.random() - 0.5) * 0.008, 0.025 + Math.random() * 0.02));
+      coldPos[p * 3] = (Math.random() - 0.5) * 5.0;
+      coldPos[p * 3 + 1] = 0.5 + Math.random() * 3.2;
+      coldPos[p * 3 + 2] = (Math.random() - 0.5) * 2.0;
+      coldVel.push(new THREE.Vector3((Math.random() - 0.5) * 0.012, 0.015 + Math.random() * 0.015, (Math.random() - 0.5) * 0.012));
     }
     coldGeo.setAttribute('position', new THREE.BufferAttribute(coldPos, 3));
     const coldMat = new THREE.PointsMaterial({
       color: 0x38bdf8,
-      size: 0.13,
+      size: 0.12,
       transparent: true,
       opacity: 0.8,
       blending: THREE.AdditiveBlending,
@@ -377,30 +463,7 @@ export const ThreeHeroDiagram: React.FC<ThreeHeroDiagramProps> = ({
     const coldParticles = new THREE.Points(coldGeo, coldMat);
     scene.add(coldParticles);
 
-    // Hot Exhaust Particles (Rose/Red, rising out of server rears into Hot Aisle)
-    const hotCount = 100;
-    const hotGeo = new THREE.BufferGeometry();
-    const hotPos = new Float32Array(hotCount * 3);
-    const hotVel: THREE.Vector3[] = [];
-
-    for (let h = 0; h < hotCount; h++) {
-      hotPos[h * 3] = (Math.random() - 0.5) * 4.4;
-      hotPos[h * 3 + 1] = 0.8 + Math.random() * 2.6;
-      hotPos[h * 3 + 2] = -1.2 - Math.random() * 0.3;
-      hotVel.push(new THREE.Vector3((Math.random() - 0.5) * 0.01, 0.018 + Math.random() * 0.02, -0.018 - Math.random() * 0.015));
-    }
-    hotGeo.setAttribute('position', new THREE.BufferAttribute(hotPos, 3));
-    const hotMat = new THREE.PointsMaterial({
-      color: 0xf43f5e,
-      size: 0.14,
-      transparent: true,
-      opacity: 0.7,
-      blending: THREE.AdditiveBlending,
-    });
-    const hotParticles = new THREE.Points(hotGeo, hotMat);
-    scene.add(hotParticles);
-
-    // 7. Raycasting for Interaction
+    // 10. Raycasting for Interaction
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
 
@@ -420,7 +483,7 @@ export const ThreeHeroDiagram: React.FC<ThreeHeroDiagramProps> = ({
         }
         if (parentGroup && parentGroup.name) {
           const item = t.equipment.items[parentGroup.name];
-          setHoveredName(item ? item.name : parentGroup.name.toUpperCase());
+          setHoveredName(item ? item.zoneTitle : parentGroup.name.toUpperCase());
         }
       } else {
         renderer.domElement.style.cursor = 'default';
@@ -450,41 +513,29 @@ export const ThreeHeroDiagram: React.FC<ThreeHeroDiagramProps> = ({
     renderer.domElement.addEventListener('mousemove', handlePointerMove);
     renderer.domElement.addEventListener('click', handleClick);
 
-    // 8. Animation Loop (Rock-solid 60 FPS)
+    // 11. Animation Loop
     let animationFrameId: number;
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
 
-      // Spin fan turbine smoothly
-      fanGroup.rotation.z += 0.09;
+      // Spin CRAH fans
+      fanBlades.forEach((fb) => {
+        fb.rotation.z += 0.08;
+      });
 
-      // Animate cold air particles
+      // Animate Cold Air particles
       const cArr = coldParticles.geometry.attributes.position.array as Float32Array;
       for (let p = 0; p < coldCount; p++) {
         cArr[p * 3] += coldVel[p].x;
         cArr[p * 3 + 1] += coldVel[p].y;
         cArr[p * 3 + 2] += coldVel[p].z;
-        if (cArr[p * 3 + 2] > 3.4) {
-          cArr[p * 3] = (Math.random() - 0.5) * 0.8;
-          cArr[p * 3 + 1] = 1.0 + Math.random() * 2.4;
-          cArr[p * 3 + 2] = 1.1;
+        if (cArr[p * 3 + 1] > 3.8) {
+          cArr[p * 3] = (Math.random() - 0.5) * 5.0;
+          cArr[p * 3 + 1] = 0.5;
+          cArr[p * 3 + 2] = (Math.random() - 0.5) * 2.0;
         }
       }
       coldParticles.geometry.attributes.position.needsUpdate = true;
-
-      // Animate hot exhaust particles
-      const hArr = hotParticles.geometry.attributes.position.array as Float32Array;
-      for (let h = 0; h < hotCount; h++) {
-        hArr[h * 3] += hotVel[h].x;
-        hArr[h * 3 + 1] += hotVel[h].y;
-        hArr[h * 3 + 2] += hotVel[h].z;
-        if (hArr[h * 3 + 2] < -3.4 || hArr[h * 3 + 1] > 4.2) {
-          hArr[h * 3] = (Math.random() - 0.5) * 4.4;
-          hArr[h * 3 + 1] = 0.8 + Math.random() * 2.6;
-          hArr[h * 3 + 2] = -1.2;
-        }
-      }
-      hotParticles.geometry.attributes.position.needsUpdate = true;
 
       controls.update();
       renderer.render(scene, camera);
@@ -495,7 +546,7 @@ export const ThreeHeroDiagram: React.FC<ThreeHeroDiagramProps> = ({
     const handleResize = () => {
       if (!container) return;
       const newW = container.clientWidth;
-      const newH = container.clientHeight || 540;
+      const newH = container.clientHeight || 560;
       camera.aspect = newW / newH;
       camera.updateProjectionMatrix();
       renderer.setSize(newW, newH);
@@ -514,7 +565,7 @@ export const ThreeHeroDiagram: React.FC<ThreeHeroDiagramProps> = ({
         container.removeChild(renderer.domElement);
       }
     };
-  }, []); // Run ONCE on mount for absolute 60 FPS performance!
+  }, []);
 
   // Camera Presets
   const handleCameraPreset = (mode: CameraViewMode) => {
@@ -525,20 +576,20 @@ export const ThreeHeroDiagram: React.FC<ThreeHeroDiagramProps> = ({
 
     switch (mode) {
       case 'iso':
-        camera.position.set(11, 8.5, 14);
-        controls.target.set(0.5, 1.8, 0);
+        camera.position.set(16, 13, 19);
+        controls.target.set(0, 1.8, 0);
         break;
-      case 'cold':
-        camera.position.set(0.5, 2.5, 9.5);
-        controls.target.set(0.5, 2.0, 0);
+      case 'racks':
+        camera.position.set(0, 4.5, 9.5);
+        controls.target.set(0, 2.0, 0);
         break;
-      case 'hot':
-        camera.position.set(0.5, 2.5, -9.5);
-        controls.target.set(0.5, 2.0, 0);
+      case 'power':
+        camera.position.set(-6.5, 5.0, 4.0);
+        controls.target.set(-6.5, 2.0, -3.5);
         break;
       case 'top':
-        camera.position.set(0.5, 18, 0.05);
-        controls.target.set(0.5, 0, 0);
+        camera.position.set(0, 24, 0.05);
+        controls.target.set(0, 0, 0);
         break;
     }
   };
@@ -554,14 +605,14 @@ export const ThreeHeroDiagram: React.FC<ThreeHeroDiagramProps> = ({
   return (
     <div className="relative w-full max-w-5xl mx-auto rounded-3xl bg-slate-950/90 border border-ip-line shadow-2xl overflow-hidden backdrop-blur-xl">
       {/* 3D WebGL Canvas Viewport */}
-      <div ref={mountRef} className="w-full h-[480px] sm:h-[540px] relative select-none cursor-grab active:cursor-grabbing">
+      <div ref={mountRef} className="w-full h-[500px] sm:h-[580px] relative select-none cursor-grab active:cursor-grabbing">
         {/* Top Control Bar with Camera Presets */}
         <div className="absolute top-4 left-4 right-4 z-20 flex flex-wrap items-center justify-between gap-2.5 pointer-events-none">
           {/* Status Badge */}
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950/85 border border-slate-700/80 backdrop-blur-md pointer-events-auto font-mono text-xs shadow-lg">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
             <span className="font-bold text-slate-200">
-              {lang === 'th' ? 'แบบจำลอง 3D Data Center (หมุนอิสระ 360°)' : '3D Data Center Pod (360° Free Orbit)'}
+              {lang === 'th' ? 'แบบจำลอง 3D Data Center เต็มห้อง (8 โซนหลัก)' : '3D Data Center Facility (8 Core Zones)'}
             </span>
             <span className="hidden sm:inline text-slate-500">•</span>
             <span className="hidden sm:inline text-cyan-400 font-bold">PUE 1.205</span>
@@ -576,31 +627,31 @@ export const ThreeHeroDiagram: React.FC<ThreeHeroDiagramProps> = ({
                   ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
-              title="Isometric 45°"
+              title="Isometric 3D Room"
             >
-              📐 ISO
+              📐 ISO ROOM
             </button>
             <button
-              onClick={() => handleCameraPreset('cold')}
+              onClick={() => handleCameraPreset('racks')}
               className={`px-2.5 py-1 rounded-lg transition-all ${
-                activeView === 'cold'
+                activeView === 'racks'
                   ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
-              title="Cold Aisle Front"
+              title="Focus Server Racks"
             >
-              ❄️ COLD
+              🖥️ RACKS
             </button>
             <button
-              onClick={() => handleCameraPreset('hot')}
+              onClick={() => handleCameraPreset('power')}
               className={`px-2.5 py-1 rounded-lg transition-all ${
-                activeView === 'hot'
+                activeView === 'power'
                   ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
-              title="Hot Aisle Rear"
+              title="Focus UPS Room"
             >
-              🔥 HOT
+              ⚡ POWER
             </button>
             <button
               onClick={() => handleCameraPreset('top')}
@@ -609,9 +660,9 @@ export const ThreeHeroDiagram: React.FC<ThreeHeroDiagramProps> = ({
                   ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
-              title="Top-Down NOC Plan"
+              title="Top-Down Floorplan"
             >
-              🏢 TOP
+              🏢 TOP-DOWN
             </button>
             <button
               onClick={toggleAutoRotate}
@@ -634,54 +685,43 @@ export const ThreeHeroDiagram: React.FC<ThreeHeroDiagramProps> = ({
               <Eye className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
               <span className="font-bold">{hoveredName}</span>
               <span className="text-[11px] text-slate-400 font-sans">
-                ({lang === 'th' ? 'คลิกดูภาพถ่ายจริงและสเปก' : 'Click to inspect real photo & specs'})
+                ({lang === 'th' ? 'คลิกดูภาพถ่ายจริงและสเปก' : 'Click to inspect photo & specs'})
               </span>
             </div>
           </div>
         )}
 
-        {/* Visual Legend Tags Floating at Bottom */}
-        <div className="absolute bottom-4 left-4 right-4 z-20 flex flex-wrap items-center justify-between gap-2.5 pointer-events-none">
-          <div className="flex items-center gap-2 bg-slate-950/85 border border-slate-800 px-3.5 py-1.5 rounded-xl backdrop-blur-md pointer-events-auto text-[11px] font-mono text-slate-300 shadow-md">
+        {/* Bottom Interactive Quick-Select Bar for all 8 Zones */}
+        <div className="absolute bottom-3 left-3 right-3 z-20 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+          <div className="hidden lg:flex items-center gap-2 bg-slate-950/85 border border-slate-800 px-3 py-1 rounded-xl backdrop-blur-md pointer-events-auto text-[11px] font-mono text-slate-300">
             <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
             <span>
               {lang === 'th'
-                ? 'คลิกลากเพื่อหมุนกล้อง • ลูกกลิ้งซูมเข้า-ออก • แตะที่ตู้เพื่อดูภาพถ่ายอุปกรณ์จริง'
-                : 'Drag to rotate 360° • Scroll to zoom • Click equipment to inspect real photographs'}
+                ? 'คลิกที่หมุดตัวเลข ❶-❽ เพื่อดูรูปภาพจริงและสเปก'
+                : 'Click numbered pins ❶-❽ to inspect real photographs & specs'}
             </span>
           </div>
 
-          <div className="flex items-center gap-1.5 pointer-events-auto">
-            <button
-              onClick={() => onSelectEquipment('rack-a')}
-              className="px-2.5 py-1 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-cyan-300 transition-all shadow-sm"
-            >
-              🖥️ Rack A
-            </button>
-            <button
-              onClick={() => onSelectEquipment('cooling')}
-              className="px-2.5 py-1 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-sky-300 transition-all shadow-sm"
-            >
-              ❄️ In-Row Chiller
-            </button>
-            <button
-              onClick={() => onSelectEquipment('rack-b')}
-              className="px-2.5 py-1 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-emerald-300 transition-all shadow-sm"
-            >
-              🖥️ Rack B
-            </button>
-            <button
-              onClick={() => onSelectEquipment('ups')}
-              className="px-2.5 py-1 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-amber-300 transition-all shadow-sm"
-            >
-              ⚡ 2N UPS
-            </button>
-            <button
-              onClick={() => onSelectEquipment('pdu')}
-              className="px-2.5 py-1 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-cyan-300 transition-all shadow-sm"
-            >
-              🔌 Smart PDU
-            </button>
+          <div className="flex flex-wrap items-center gap-1.5 pointer-events-auto">
+            {[
+              { id: 'server-rack', num: '❶', label: 'Racks', color: 'text-blue-400' },
+              { id: 'ups-battery', num: '❷', label: 'UPS', color: 'text-emerald-400' },
+              { id: 'cooling', num: '❸', label: 'Cooling', color: 'text-sky-400' },
+              { id: 'containment', num: '❹', label: 'Aisle', color: 'text-orange-400' },
+              { id: 'fire-suppression', num: '❺', label: 'Fire', color: 'text-rose-400' },
+              { id: 'dcim-noc', num: '❻', label: 'DCIM', color: 'text-purple-400' },
+              { id: 'network-room', num: '❼', label: 'Network', color: 'text-amber-400' },
+              { id: 'security-access', num: '❽', label: 'Security', color: 'text-slate-400' },
+            ].map((z) => (
+              <button
+                key={z.id}
+                onClick={() => onSelectEquipment(z.id)}
+                className="px-2 py-1 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono font-bold transition-all shadow-sm flex items-center gap-1"
+              >
+                <span className={z.color}>{z.num}</span>
+                <span className="text-slate-300">{z.label}</span>
+              </button>
+            ))}
           </div>
         </div>
       </div>
