@@ -14,6 +14,8 @@ import { Cpu, Wifi, Clock, Server, Zap, Activity, HardDrive } from 'lucide-react
 import { Host, Metric } from '../types/api';
 import { formatBytes, formatRate, formatUptime } from '../services/api';
 
+import { ServerIcon } from './ui/ServerIcon';
+
 interface MetricChartsProps {
   selectedHost: Host;
   metrics: Metric[];
@@ -54,34 +56,39 @@ export const MetricCharts: React.FC<MetricChartsProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Node Info & Time Filter Toolbar */}
-      <div className="bg-surface-card border border-surface-border rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold">
-            <Activity className="w-5 h-5" />
+      {/* Node Info & Hardware Toolbar */}
+      <div className="bg-surface-card border border-surface-border rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4 tech-border-glow shadow-lg shadow-cyan-500/5">
+        <div className="flex items-center gap-4">
+          <div className="relative shrink-0 hidden sm:block">
+            <ServerIcon isOnline={selectedHost.is_online} variant="isometric" size="lg" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold text-white font-mono">{selectedHost.hostname}</h2>
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-lg font-bold text-white font-mono">{selectedHost.hostname}</h2>
               <span
-                className={`text-[11px] px-2 py-0.5 rounded-full font-mono border ${
+                className={`text-[11px] px-2.5 py-0.5 rounded-full font-mono font-bold border ${
                   selectedHost.is_online
-                    ? 'bg-emerald-950/60 border-emerald-500/30 text-emerald-400'
+                    ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-400 shadow-sm shadow-emerald-500/20'
                     : 'bg-slate-800 border-slate-700 text-slate-400'
                 }`}
               >
-                {selectedHost.is_online ? 'Active Telemetry' : 'Offline Node'}
+                {selectedHost.is_online ? '● Active Telemetry' : '○ Offline Node'}
               </span>
             </div>
-            <p className="text-xs text-slate-400 font-mono mt-0.5">
-              IP: {selectedHost.ip_address || 'N/A'} | Cores: {selectedHost.cpu_count} | RAM:{' '}
-              {formatBytes(selectedHost.total_ram_bytes)} | Disk: {formatBytes(selectedHost.total_disk_bytes)}
+            <p className="text-xs text-slate-400 font-mono mt-1 flex flex-wrap items-center gap-2">
+              <span className="text-cyan-400 font-medium">{selectedHost.ip_address || 'DHCP'}</span>
+              <span className="text-slate-600">•</span>
+              <span>{selectedHost.cpu_count} vCPU</span>
+              <span className="text-slate-600">•</span>
+              <span>RAM: {formatBytes(selectedHost.total_ram_bytes)}</span>
+              <span className="text-slate-600">•</span>
+              <span>Disk: {formatBytes(selectedHost.total_disk_bytes)}</span>
             </p>
           </div>
         </div>
 
         {/* Time Range Selector */}
-        <div className="flex items-center gap-1.5 bg-slate-900 border border-surface-border p-1 rounded-lg">
+        <div className="flex items-center gap-1.5 bg-slate-900 border border-surface-border p-1 rounded-xl font-mono">
           {['1h', '6h', '24h'].map((r) => (
             <button
               key={r}

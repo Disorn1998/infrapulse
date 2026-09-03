@@ -243,12 +243,12 @@ export const App: React.FC = () => {
         onOpenExport={() => setIsExportModalOpen(true)}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6 relative z-10">
         {/* Interactive 1-Click Demo Control Bar */}
         <DemoControlBar onSimulationComplete={handleManualRefresh} />
 
         {error && (
-          <div className="bg-rose-950/60 border border-rose-500/40 rounded-xl p-4 flex items-center gap-3 text-rose-300 font-mono text-xs shadow-lg">
+          <div className="bg-rose-950/60 border border-rose-500/40 rounded-2xl p-4 flex items-center gap-3 text-rose-300 font-mono text-xs shadow-lg shadow-rose-500/10">
             <AlertCircle className="w-5 h-5 text-rose-400 flex-shrink-0" />
             <div>
               <strong className="font-bold">Backend Connection Issue: </strong>
@@ -259,26 +259,31 @@ export const App: React.FC = () => {
 
         <FacilityKpi facility={facility} />
 
-        {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-surface-border pb-2 overflow-x-auto">
+        {/* High-Tech NOC Navigation Tabs */}
+        <div className="flex items-center gap-2 border-b border-surface-border pb-3 overflow-x-auto select-none">
           <button
             onClick={() => setActiveTab('telemetry')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all ${
+            className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all ${
               activeTab === 'telemetry'
-                ? 'bg-cyan-500 text-slate-950 shadow-lg shadow-cyan-500/20'
-                : 'bg-surface-card hover:bg-slate-800 text-slate-400 border border-surface-border'
+                ? 'bg-cyan-500 text-slate-950 shadow-lg shadow-cyan-500/25 ring-1 ring-cyan-300'
+                : 'bg-surface-card hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-surface-border'
             }`}
           >
             <Activity className="w-4 h-4" />
             <span>Real-Time Telemetry</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+              activeTab === 'telemetry' ? 'bg-slate-950/30 text-slate-950' : 'bg-slate-900 text-cyan-400'
+            }`}>
+              {hosts.length}
+            </span>
           </button>
 
           <button
             onClick={() => setActiveTab('capacity')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all ${
+            className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all ${
               activeTab === 'capacity'
-                ? 'bg-cyan-500 text-slate-950 shadow-lg shadow-cyan-500/20'
-                : 'bg-surface-card hover:bg-slate-800 text-slate-400 border border-surface-border'
+                ? 'bg-cyan-500 text-slate-950 shadow-lg shadow-cyan-500/25 ring-1 ring-cyan-300'
+                : 'bg-surface-card hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-surface-border'
             }`}
           >
             <Zap className="w-4 h-4" />
@@ -287,10 +292,10 @@ export const App: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('ai_advisor')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all ${
+            className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all ${
               activeTab === 'ai_advisor'
-                ? 'bg-gradient-to-r from-purple-500 to-cyan-500 text-slate-950 shadow-lg shadow-purple-500/20'
-                : 'bg-surface-card hover:bg-slate-800 text-slate-400 border border-surface-border'
+                ? 'bg-gradient-to-r from-purple-500 to-cyan-500 text-slate-950 shadow-lg shadow-purple-500/25 ring-1 ring-purple-300'
+                : 'bg-surface-card hover:bg-slate-800 text-slate-400 hover:text-purple-300 border border-surface-border'
             }`}
           >
             <Bot className="w-4 h-4 text-purple-400" />

@@ -1,7 +1,9 @@
 import React from 'react';
-import { Server, Monitor, Trash2 } from 'lucide-react';
+import { Server, Monitor, Trash2, Zap } from 'lucide-react';
 import { Host, Metric } from '../types/api';
 import { formatLastSeen } from '../services/api';
+import { CircularGauge } from './ui/CircularGauge';
+import { ServerIcon } from './ui/ServerIcon';
 
 interface HostCardProps {
   host: Host;
@@ -24,6 +26,8 @@ export const HostCard: React.FC<HostCardProps> = ({
   const cpuPct = latestMetric?.cpu_percent ?? 0;
   const ramPct = latestMetric?.ram_percent ?? (host.total_ram_bytes > 0 ? Math.round(((latestMetric?.ram_used_bytes || 0) / host.total_ram_bytes) * 100) : 0);
   const diskPct = latestMetric?.disk_percent ?? 0;
+  const tempC = latestMetric?.cpu_temperature_celsius;
+  const powerW = latestMetric?.calculated_power_watts ?? host.power_config?.idle_watts ?? 0;
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -35,25 +39,34 @@ export const HostCard: React.FC<HostCardProps> = ({
   return (
     <div
       onClick={() => onSelect(host)}
-      className={`cursor-pointer rounded-xl p-4 transition-all duration-200 border relative overflow-hidden group ${
+      className={`cursor-pointer rounded-2xl p-4 transition-all duration-300 border relative overflow-hidden group tech-border-glow ${
         isSelected
-          ? 'bg-surface-card border-cyan-500 shadow-lg shadow-cyan-500/10 ring-1 ring-cyan-500/50'
-          : 'bg-surface/60 border-surface-border hover:border-slate-600 hover:bg-surface-card/60'
+          ? 'bg-surface-card border-cyan-400 shadow-glow-cyan ring-1 ring-cyan-400/50'
+          : 'bg-surface/75 border-surface-border hover:border-cyan-500/40 hover:bg-surface-card/70'
       }`}
     >
-      {/* Top Bar: Icon, Name & Status */}
-      <div className="flex items-start justify-between gap-3">
+      {/* Background Accent Grid / Glow */}
+      <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-2xl pointer-events-none" />
+
+      {/* Top Bar: Server Hardware Graphic, Hostname, OS & Status */}
+      <div className="flex items-start justify-between gap-3 relative z-10">
         <div className="flex items-center gap-3">
-          <div
-            className={`w-9 h-9 rounded-lg flex items-center justify-center border ${
-              isWindows
-                ? 'bg-blue-950/50 border-blue-500/30 text-blue-400'
-                : 'bg-orange-950/50 border-orange-500/30 text-orange-400'
-            }`}
-          >
-            {isWindows ? <Monitor className="w-5 h-5" /> : <Server className="w-5 h-5" />}
+          {/* Server Hardware Icon with Live LED Glow */}
+          <div className="relative shrink-0">
+            <ServerIcon isOnline={isOnline} variant="isometric" size="md" />
+            <div
+              className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-md flex items-center justify-center border text-[9px] ${
+                isWindows
+                  ? 'bg-blue-950/80 border-blue-500/40 text-blue-400'
+                  : 'bg-orange-950/80 border-orange-500/40 text-orange-400'
+              }`}
+              title={host.os_type}
+            >
+              {isWindows ? <Monitor className="w-2.5 h-2.5" /> : <Server className="w-2.5 h-2.5" />}
+            </div>
           </div>
-          <div>
+
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-bold text-white font-mono tracking-tight truncate max-w-[130px] sm:max-w-[180px]">
                 {host.hostname}
@@ -62,34 +75,34 @@ export const HostCard: React.FC<HostCardProps> = ({
                 <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"></span>
               )}
             </div>
-            <p className="text-[11px] text-slate-400 font-mono flex items-center gap-1 mt-0.5">
+            <p className="text-[11px] text-slate-400 font-mono flex items-center gap-1.5 mt-0.5">
               <span>{host.ip_address || 'DHCP (No IP)'}</span>
               <span className="text-slate-600">•</span>
-              <span className="capitalize">{host.os_type}</span>
+              <span className="text-slate-400">{host.cpu_count} vCPU</span>
             </p>
           </div>
         </div>
 
         {/* Dynamic Status Badge, Temperature Pill & Delete Action */}
-        <div className="flex flex-col items-end gap-1">
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
           <div className="flex items-center gap-1.5">
-            {latestMetric?.cpu_temperature_celsius && (
+            {tempC && (
               <span
                 className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border ${
-                  latestMetric.cpu_temperature_celsius >= 75
+                  tempC >= 75
                     ? 'bg-rose-500/20 text-rose-400 border-rose-500/40 animate-pulse'
-                    : latestMetric.cpu_temperature_celsius >= 65
+                    : tempC >= 65
                     ? 'bg-amber-500/20 text-amber-400 border-amber-500/40'
                     : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40'
                 }`}
               >
-                🌡️ {latestMetric.cpu_temperature_celsius}&deg;C
+                🌡️ {tempC}&deg;C
               </span>
             )}
             <span
-              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono font-medium border ${
+              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold border ${
                 isOnline
-                  ? 'bg-emerald-950/60 border-emerald-500/30 text-emerald-400'
+                  ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-400'
                   : 'bg-slate-800/80 border-slate-700 text-slate-400'
               }`}
             >
@@ -105,66 +118,53 @@ export const HostCard: React.FC<HostCardProps> = ({
             {onDelete && (
               <button
                 onClick={handleDelete}
-                className="opacity-60 group-hover:opacity-100 hover:text-rose-400 p-1 rounded hover:bg-rose-950/40 transition-all text-slate-500"
+                className="opacity-50 group-hover:opacity-100 hover:text-rose-400 p-1 rounded hover:bg-rose-950/40 transition-all text-slate-500"
                 title="Remove node from inventory"
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
-          <span className="text-[10px] text-slate-500 font-mono">
-            {formatLastSeen(host.seconds_since_last_seen)}
-          </span>
+          
+          <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400">
+            {powerW > 0 && (
+              <span className="flex items-center gap-0.5 text-amber-400 font-semibold">
+                <Zap className="w-3 h-3 text-amber-400" />
+                {powerW.toFixed(0)}W
+              </span>
+            )}
+            <span className="text-slate-500">
+              {formatLastSeen(host.seconds_since_last_seen)}
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Mini Metric Gauges */}
-      <div className="mt-4 grid grid-cols-3 gap-2 pt-3 border-t border-slate-800/80">
-        {/* CPU */}
-        <div className="bg-slate-900/60 rounded-lg p-2 border border-slate-800">
-          <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
-            <span>CPU</span>
-            <span className="text-slate-200 font-semibold">{cpuPct.toFixed(1)}%</span>
-          </div>
-          <div className="w-full bg-slate-800 h-1 rounded-full mt-1.5 overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-300 ${
-                cpuPct > 85 ? 'bg-rose-500' : cpuPct > 65 ? 'bg-amber-400' : 'bg-cyan-500'
-              }`}
-              style={{ width: `${Math.min(100, Math.max(2, cpuPct))}%` }}
-            ></div>
-          </div>
-        </div>
+      {/* Circular Gauges for High-Tech NOC Monitoring */}
+      <div className="mt-3.5 pt-3 border-t border-slate-800/80 grid grid-cols-3 gap-2 bg-slate-950/40 rounded-xl p-2.5">
+        <CircularGauge
+          value={cpuPct}
+          label="CPU"
+          size={56}
+          strokeWidth={4.5}
+          colorScheme={cpuPct > 85 ? 'rose' : cpuPct > 70 ? 'amber' : 'cyan'}
+        />
 
-        {/* RAM */}
-        <div className="bg-slate-900/60 rounded-lg p-2 border border-slate-800">
-          <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
-            <span>RAM</span>
-            <span className="text-slate-200 font-semibold">{ramPct.toFixed(0)}%</span>
-          </div>
-          <div className="w-full bg-slate-800 h-1 rounded-full mt-1.5 overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-300 ${
-                ramPct > 85 ? 'bg-rose-500' : ramPct > 70 ? 'bg-amber-400' : 'bg-indigo-400'
-              }`}
-              style={{ width: `${Math.min(100, Math.max(2, ramPct))}%` }}
-            ></div>
-          </div>
-        </div>
+        <CircularGauge
+          value={ramPct}
+          label="RAM"
+          size={56}
+          strokeWidth={4.5}
+          colorScheme={ramPct > 85 ? 'rose' : ramPct > 70 ? 'amber' : 'emerald'}
+        />
 
-        {/* Disk */}
-        <div className="bg-slate-900/60 rounded-lg p-2 border border-slate-800">
-          <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
-            <span>Disk</span>
-            <span className="text-slate-200 font-semibold">{diskPct.toFixed(0)}%</span>
-          </div>
-          <div className="w-full bg-slate-800 h-1 rounded-full mt-1.5 overflow-hidden">
-            <div
-              className="bg-emerald-500 h-full rounded-full transition-all duration-300"
-              style={{ width: `${Math.min(100, Math.max(2, diskPct))}%` }}
-            ></div>
-          </div>
-        </div>
+        <CircularGauge
+          value={diskPct}
+          label="DISK"
+          size={56}
+          strokeWidth={4.5}
+          colorScheme={diskPct > 85 ? 'rose' : diskPct > 75 ? 'amber' : 'emerald'}
+        />
       </div>
     </div>
   );

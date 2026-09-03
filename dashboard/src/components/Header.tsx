@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, RefreshCw, Server, Settings, FileSpreadsheet } from 'lucide-react';
+import { RefreshCw, Server, Settings, FileSpreadsheet } from 'lucide-react';
 import { FacilityOverview } from '../types/api';
 
 interface HeaderProps {
@@ -58,21 +58,29 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="border-b border-surface-border bg-surface/80 backdrop-blur-md sticky top-0 z-30 px-4 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
       {/* Brand & Site Info */}
       <div className="flex items-center gap-3.5">
-        <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-cyan-600 to-emerald-500 flex items-center justify-center shadow-lg shadow-cyan-500/20 text-white font-bold">
-          <Activity className="w-5 h-5" />
+        <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 via-slate-900 to-emerald-500/20 border border-cyan-500/40 flex items-center justify-center shadow-lg shadow-cyan-500/20 group">
+          {/* Animated Glow Pulse Ring */}
+          <div className="absolute inset-0 rounded-xl bg-cyan-500/20 animate-ping opacity-25" />
+          
+          {/* SVG Heartbeat/Pulse Logo */}
+          <svg className="w-6 h-6 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 12h4l2-6 4 12 3-8 2 4h4" />
+          </svg>
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-lg font-bold tracking-tight text-white font-mono">
+            <h1 className="text-xl font-extrabold tracking-wider text-white font-mono bg-gradient-to-r from-white via-cyan-200 to-cyan-400 bg-clip-text text-transparent">
               INFRAPULSE
             </h1>
-            <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-medium bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 shadow-sm shadow-cyan-500/10 tracking-wider">
               DCIM v1.0
             </span>
           </div>
-          <p className="text-xs text-slate-400 flex items-center gap-1.5">
-            <Server className="w-3.5 h-3.5 text-slate-500" />
-            <span>{facility?.facility_name || 'Bangkok Edge DC - Zone A'}</span>
+          <p className="text-xs text-slate-400 font-mono flex items-center gap-1.5 mt-0.5">
+            <Server className="w-3.5 h-3.5 text-cyan-400/80" />
+            <span className="text-slate-300 font-medium">{facility?.facility_name || 'Bangkok Edge DC - Zone A'}</span>
+            <span className="text-slate-600">•</span>
+            <span className="text-[11px] text-emerald-400/90 font-medium">NOC Online</span>
           </p>
         </div>
       </div>

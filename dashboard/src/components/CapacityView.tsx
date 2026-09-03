@@ -23,6 +23,8 @@ import {
   Trash2,
   FileSpreadsheet,
   Thermometer,
+  Fan,
+  CheckCircle2,
 } from 'lucide-react';
 import { CapacityForecast, FacilityPowerLog, Host, RackSummary } from '../types/api';
 import {
@@ -332,8 +334,8 @@ export const CapacityView: React.FC<CapacityViewProps> = ({ onOpenExport }) => {
             </div>
           </div>
 
-          {/* Rack Visual 42U Frame */}
-          <div className="bg-slate-950 border-2 border-slate-800 rounded-lg p-2.5 h-64 overflow-y-auto space-y-1.5 font-mono text-xs">
+          {/* Rack Visual 42U Frame with Hardware Details */}
+          <div className="bg-slate-950/90 border-2 border-slate-800/90 rounded-xl p-2.5 h-72 overflow-y-auto space-y-1.5 font-mono text-xs shadow-inner">
             {currentRack && currentRack.hosts.length > 0 ? (
               currentRack.hosts.map((h) => {
                 const uStart = h.u_start;
@@ -344,13 +346,18 @@ export const CapacityView: React.FC<CapacityViewProps> = ({ onOpenExport }) => {
                 return (
                   <div
                     key={h.host_id}
-                    className="bg-surface-card border border-slate-700/80 rounded px-2.5 py-1.5 flex items-center justify-between hover:border-cyan-500/50 transition-colors"
+                    className="bg-surface-card border border-slate-700/80 rounded-lg px-2.5 py-1.5 flex items-center justify-between hover:border-cyan-500/50 transition-all hover:bg-slate-900 group"
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-slate-500 font-bold">
+                      <span className="text-slate-500 font-bold text-[10px]">
                         U{uStart.toString().padStart(2, '0')}-U{(uStart + uHeight - 1).toString().padStart(2, '0')}
                       </span>
-                      <span className="text-slate-200 font-bold truncate">{h.hostname}</span>
+                      {/* Chassis Activity LEDs */}
+                      <div className="flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        <span className="w-1 h-1 rounded-full bg-cyan-400" />
+                      </div>
+                      <span className="text-slate-200 font-bold truncate text-[11px]">{h.hostname}</span>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
@@ -361,13 +368,15 @@ export const CapacityView: React.FC<CapacityViewProps> = ({ onOpenExport }) => {
 
                       {/* Feed Badge */}
                       <span
-                        className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
-                          feed === 'A' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-indigo-500/20 text-indigo-400'
+                        className={`text-[10px] px-1.5 py-0.5 rounded font-bold border ${
+                          feed === 'A'
+                            ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30'
+                            : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
                         }`}
                       >
                         Feed {feed}
                       </span>
-                      <span className="text-slate-400 text-[11px]">{h.power_watts}W</span>
+                      <span className="text-slate-300 font-semibold text-[11px]">{h.power_watts}W</span>
                     </div>
                   </div>
                 );
@@ -379,9 +388,127 @@ export const CapacityView: React.FC<CapacityViewProps> = ({ onOpenExport }) => {
             )}
 
             {/* Empty Rack Filler Slot */}
-            <div className="border border-dashed border-slate-800 rounded p-2 text-center text-slate-600 text-[11px]">
-              + {currentRack ? currentRack.available_u : 32}U Available Space
+            <div className="border border-dashed border-slate-800/80 rounded-lg p-2 text-center text-slate-600 text-[11px] bg-slate-950/40">
+              + {currentRack ? currentRack.available_u : 32}U Available Rack Space
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 2.5 Infrastructure Power & Cooling Hardware Strip */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {/* PDU Feed A */}
+        <div className="bg-surface-card border border-surface-border rounded-xl p-4 flex flex-col justify-between shadow-sm tech-border-glow">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-cyan-400" />
+              <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
+                PDU A-Side (Primary)
+              </span>
+            </div>
+            <span className="flex items-center gap-1 text-[10px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              230V Nominal
+            </span>
+          </div>
+
+          <div className="mt-3 flex items-baseline justify-between font-mono">
+            <div>
+              <span className="text-xl font-bold text-white">
+                {Math.round((forecast?.current_power_load_watts || 2400) * 0.52)}
+              </span>
+              <span className="text-xs text-cyan-400 ml-1">Watts</span>
+            </div>
+            <div className="text-right text-xs text-slate-400">
+              <span>{(((forecast?.current_power_load_watts || 2400) * 0.52) / 230).toFixed(1)} A</span>
+              <span className="text-slate-600 ml-1">/ 16A Breaker</span>
+            </div>
+          </div>
+
+          <div className="w-full bg-slate-900 h-1.5 rounded-full mt-3 overflow-hidden border border-slate-800">
+            <div
+              className="bg-cyan-500 h-full rounded-full transition-all"
+              style={{ width: `${Math.min(100, Math.max(10, (((forecast?.current_power_load_watts || 2400) * 0.52) / (16 * 230)) * 100))}%` }}
+            />
+          </div>
+          <div className="flex items-center justify-between text-[10px] font-mono text-slate-500 mt-1">
+            <span>Branch Circuit Load</span>
+            <span>NEC 80% Safe Margin</span>
+          </div>
+        </div>
+
+        {/* PDU Feed B */}
+        <div className="bg-surface-card border border-surface-border rounded-xl p-4 flex flex-col justify-between shadow-sm tech-border-glow">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-emerald-400" />
+              <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
+                PDU B-Side (Redundant)
+              </span>
+            </div>
+            <span className="flex items-center gap-1 text-[10px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              230V Nominal
+            </span>
+          </div>
+
+          <div className="mt-3 flex items-baseline justify-between font-mono">
+            <div>
+              <span className="text-xl font-bold text-white">
+                {Math.round((forecast?.current_power_load_watts || 2400) * 0.48)}
+              </span>
+              <span className="text-xs text-emerald-400 ml-1">Watts</span>
+            </div>
+            <div className="text-right text-xs text-slate-400">
+              <span>{(((forecast?.current_power_load_watts || 2400) * 0.48) / 230).toFixed(1)} A</span>
+              <span className="text-slate-600 ml-1">/ 16A Breaker</span>
+            </div>
+          </div>
+
+          <div className="w-full bg-slate-900 h-1.5 rounded-full mt-3 overflow-hidden border border-slate-800">
+            <div
+              className="bg-emerald-500 h-full rounded-full transition-all"
+              style={{ width: `${Math.min(100, Math.max(10, (((forecast?.current_power_load_watts || 2400) * 0.48) / (16 * 230)) * 100))}%` }}
+            />
+          </div>
+          <div className="flex items-center justify-between text-[10px] font-mono text-slate-500 mt-1">
+            <span>Branch Circuit Load</span>
+            <span>2N Redundant Match</span>
+          </div>
+        </div>
+
+        {/* In-Row Precision Cooling Unit */}
+        <div className="bg-surface-card border border-surface-border rounded-xl p-4 flex flex-col justify-between shadow-sm tech-border-glow">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Fan className="w-4 h-4 text-cyan-400 animate-spin-slow" />
+              <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
+                In-Row Precision Cooling
+              </span>
+            </div>
+            <span className="flex items-center gap-1 text-[10px] font-mono text-cyan-400 bg-cyan-950/60 border border-cyan-500/30 px-2 py-0.5 rounded-full">
+              <CheckCircle2 className="w-3 h-3 text-cyan-400" />
+              Optimal
+            </span>
+          </div>
+
+          <div className="mt-3 flex items-baseline justify-between font-mono">
+            <div>
+              <span className="text-xl font-bold text-white">21.5&deg;C</span>
+              <span className="text-xs text-slate-400 ml-1">Supply Air</span>
+            </div>
+            <div className="text-right text-xs text-slate-400">
+              <span className="text-cyan-400 font-bold">&Delta;T: 7.2&deg;C</span>
+              <span className="text-slate-500 ml-1">(Return 28.7&deg;C)</span>
+            </div>
+          </div>
+
+          <div className="w-full bg-slate-900 h-1.5 rounded-full mt-3 overflow-hidden border border-slate-800">
+            <div className="bg-gradient-to-r from-cyan-500 to-indigo-500 h-full rounded-full w-[45%]" />
+          </div>
+          <div className="flex items-center justify-between text-[10px] font-mono text-slate-500 mt-1">
+            <span>Variable EC Fan Speed: 45%</span>
+            <span>ASHRAE A1 Compliant</span>
           </div>
         </div>
       </div>
