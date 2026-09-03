@@ -92,7 +92,7 @@ def get_facility_overview(db: Session, include_simulated: bool = True) -> Facili
     # 2. Query hosts and identify active hosts (heartbeat within last 3 minutes)
     query = db.query(Host)
     if not include_simulated:
-        query = query.filter((Host.is_simulated == False) & (Host.is_test == False))
+        query = query.filter(Host.is_simulated == False)
     else:
         query = query.filter(Host.is_simulated == True)
     all_hosts = query.all()
