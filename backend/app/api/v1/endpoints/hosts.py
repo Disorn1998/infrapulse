@@ -9,6 +9,7 @@ from app.models.power import PowerConfig
 from app.models.pdu import PDU
 from app.schemas.host import HostResponse
 from app.schemas.power import PowerConfigUpdate, PowerConfigResponse
+from app.services.simulation_service import SIMULATED_HOST_IDS
 
 router = APIRouter()
 
@@ -42,6 +43,7 @@ def enrich_host_status(host: Host) -> dict:
         "agent_version": host.agent_version,
         "status": computed_status,
         "is_online": is_online,
+        "is_simulated": bool(getattr(host, "is_simulated", False) or host.is_test),
         "seconds_since_last_seen": diff_sec,
         "last_seen": host.last_seen,
         "created_at": host.created_at,
@@ -64,11 +66,15 @@ def list_hosts(
     """
     query = db.query(Host)
     if mode == "live":
-        query = query.filter((Host.is_simulated == False) & (Host.is_test == False))
+        query = query.filter(
+            (Host.is_simulated == False) & (Host.is_test == False) & (~Host.id.in_(SIMULATED_HOST_IDS))
+        )
     elif mode == "sandbox":
-        query = query.filter(Host.is_simulated == True)
+        query = query.filter((Host.is_simulated == True) | (Host.id.in_(SIMULATED_HOST_IDS)))
     elif not include_test:
-        query = query.filter((Host.is_simulated == False) & (Host.is_test == False))
+        query = query.filter(
+            (Host.is_simulated == False) & (Host.is_test == False) & (~Host.id.in_(SIMULATED_HOST_IDS))
+        )
     hosts = query.order_by(Host.hostname.asc()).all()
     return [enrich_host_status(h) for h in hosts]
 
