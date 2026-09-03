@@ -9,7 +9,7 @@ from sqlalchemy import text
 
 from app.core.config import settings
 from app.core.database import init_db, get_db
-from app.core.scheduler import alert_evaluator_worker
+from app.core.scheduler import alert_evaluator_worker, simulation_ticker_worker
 from app.api.v1.api import api_router
 
 # Setup Logging
@@ -34,10 +34,13 @@ async def lifespan(app: FastAPI):
 
     # Launch Background Alert Evaluation Worker (runs every 30s)
     worker_task = asyncio.create_task(alert_evaluator_worker(interval_seconds=30))
+    # Launch Background Simulation Ticker Worker (runs every 10s to keep sandbox live & fluctuating)
+    sim_task = asyncio.create_task(simulation_ticker_worker(interval_seconds=10))
     
     yield
 
     worker_task.cancel()
+    sim_task.cancel()
     logger.info("Shutting down InfraPulse Backend API...")
 
 

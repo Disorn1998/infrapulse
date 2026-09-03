@@ -20,8 +20,8 @@ def generate_ai_advisor_insights(db: Session) -> AiAdvisorResponse:
     forecast = calculate_capacity_forecast(db)
     now_str = datetime.now(timezone.utc).isoformat()
 
-    # Query active registered hosts (excluding synthetic tests)
-    hosts = db.query(Host).filter(Host.is_test == False).all()
+    # Query active registered hosts
+    hosts = db.query(Host).all()
 
     health_score = 100
     insights: List[AiInsightCard] = []
@@ -174,7 +174,12 @@ def generate_ai_advisor_insights(db: Session) -> AiAdvisorResponse:
     offline_nodes = []
     
     for h in hosts:
-        is_node_online = bool(h.last_seen and (now_utc - h.last_seen).total_seconds() <= 90)
+        if h.last_seen:
+            last_seen_aware = h.last_seen.replace(tzinfo=timezone.utc) if h.last_seen.tzinfo is None else h.last_seen
+            is_node_online = bool((now_utc - last_seen_aware).total_seconds() <= 90)
+        else:
+            is_node_online = False
+
         if is_node_online:
             online_hosts_count += 1
         else:

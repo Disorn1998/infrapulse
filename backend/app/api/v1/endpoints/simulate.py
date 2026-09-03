@@ -1,5 +1,4 @@
 import asyncio
-import uuid
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -9,9 +8,12 @@ from app.core.database import get_db
 from app.core.rate_limit import simulation_rate_limiter
 from app.core.websocket import ws_manager
 from app.models.host import Host
-from app.models.metric import Metric
-from app.models.power import PowerConfig
-from app.services.power_service import calculate_node_power_watts
+from app.services.simulation_service import (
+    ensure_simulated_cluster,
+    tick_simulation_cycle,
+    simulation_engine,
+    SIMULATED_HOST_IDS,
+)
 
 router = APIRouter()
 
@@ -22,185 +24,15 @@ class SimulationResult(BaseModel):
     message: str
 
 
-SIMULATED_NODES = [
-    {
-        "hostname": "edge-proxy-01",
-        "ip_address": "192.168.1.10",
-        "os_type": "ubuntu",
-        "os_version": "Ubuntu 24.04 LTS",
-        "cpu_count": 4,
-        "total_ram": 16000000000,
-        "total_disk": 256000000000,
-        "cpu": 15.0,
-        "ram": 35.0,
-        "disk": 22.0,
-        "net_rx": 4500000.0,
-        "net_tx": 6200000.0,
-        "idle_w": 25.0,
-        "rated_w": 120.0,
-        "pdu_id": 1,
-        "rack_name": "Rack-01",
-        "rack_unit": 1,
-        "height": 2,
-        "temp_c": 39.5,
-    },
-    {
-        "hostname": "web-frontend-01",
-        "ip_address": "192.168.1.14",
-        "os_type": "ubuntu",
-        "os_version": "Ubuntu 24.04 LTS",
-        "cpu_count": 8,
-        "total_ram": 32000000000,
-        "total_disk": 512000000000,
-        "cpu": 32.0,
-        "ram": 48.0,
-        "disk": 35.0,
-        "net_rx": 8200000.0,
-        "net_tx": 11500000.0,
-        "idle_w": 35.0,
-        "rated_w": 180.0,
-        "pdu_id": 2,
-        "rack_name": "Rack-01",
-        "rack_unit": 4,
-        "height": 2,
-        "temp_c": 44.0,
-    },
-    {
-        "hostname": "db-primary-01",
-        "ip_address": "192.168.1.11",
-        "os_type": "ubuntu",
-        "os_version": "Ubuntu 24.04 LTS",
-        "cpu_count": 16,
-        "total_ram": 64000000000,
-        "total_disk": 2000000000000,
-        "cpu": 45.0,
-        "ram": 72.0,
-        "disk": 48.0,
-        "net_rx": 1200000.0,
-        "net_tx": 850000.0,
-        "idle_w": 60.0,
-        "rated_w": 350.0,
-        "pdu_id": 2,
-        "rack_name": "Rack-02",
-        "rack_unit": 1,
-        "height": 4,
-        "temp_c": 52.0,
-    },
-    {
-        "hostname": "ai-inference-01",
-        "ip_address": "192.168.1.12",
-        "os_type": "ubuntu",
-        "os_version": "Ubuntu 24.04 LTS",
-        "cpu_count": 32,
-        "total_ram": 128000000000,
-        "total_disk": 4000000000000,
-        "cpu": 68.0,
-        "ram": 84.0,
-        "disk": 65.0,
-        "net_rx": 8500000.0,
-        "net_tx": 12000000.0,
-        "idle_w": 150.0,
-        "rated_w": 850.0,
-        "pdu_id": 1,
-        "rack_name": "Rack-03",
-        "rack_unit": 1,
-        "height": 6,
-        "temp_c": 68.5,
-    },
-    {
-        "hostname": "storage-nas-01",
-        "ip_address": "192.168.1.13",
-        "os_type": "ubuntu",
-        "os_version": "Ubuntu 24.04 LTS",
-        "cpu_count": 8,
-        "total_ram": 32000000000,
-        "total_disk": 16000000000000,
-        "cpu": 28.0,
-        "ram": 55.0,
-        "disk": 78.0,
-        "net_rx": 15000000.0,
-        "net_tx": 22000000.0,
-        "idle_w": 80.0,
-        "rated_w": 400.0,
-        "pdu_id": 2,
-        "rack_name": "Rack-03",
-        "rack_unit": 8,
-        "height": 4,
-        "temp_c": 46.0,
-    },
-]
-
-
 @router.post("/cluster", response_model=SimulationResult)
 def trigger_cluster_simulation(db: Session = Depends(get_db)):
-    """Instantly inject enterprise server nodes across Rack-01, Rack-02, and Rack-03"""
-    now = datetime.now(timezone.utc)
-
-    for node in SIMULATED_NODES:
-        host = db.query(Host).filter(Host.hostname == node["hostname"]).first()
-        if not host:
-            host = Host(
-                id=node["hostname"].lower(),
-                hostname=node["hostname"],
-                ip_address=node["ip_address"],
-                os_type=node["os_type"],
-                os_version=node["os_version"],
-                cpu_count=node["cpu_count"],
-                total_ram_bytes=node["total_ram"],
-                total_disk_bytes=node["total_disk"],
-                agent_version="1.0.0",
-                status="online",
-                is_test=False,
-                last_seen=now,
-            )
-            db.add(host)
-            db.flush()
-        else:
-            host.last_seen = now
-            host.status = "online"
-
-        # Update Power Configuration
-        p_cfg = db.query(PowerConfig).filter(PowerConfig.host_id == host.id).first()
-        if not p_cfg:
-            p_cfg = PowerConfig(
-                id=str(uuid.uuid4()),
-                host_id=host.id,
-                idle_watts=node["idle_w"],
-                rated_watts=node["rated_w"],
-                pdu_id=node["pdu_id"],
-                rack_name=node["rack_name"],
-                rack_unit_start=node["rack_unit"],
-                rack_unit_height=node["height"],
-            )
-            db.add(p_cfg)
-        else:
-            p_cfg.idle_watts = node["idle_w"]
-            p_cfg.rated_watts = node["rated_w"]
-            p_cfg.pdu_id = node["pdu_id"]
-            p_cfg.rack_name = node["rack_name"]
-            p_cfg.rack_unit_start = node["rack_unit"]
-            p_cfg.rack_unit_height = node["height"]
-
-        # Insert live metric
-        calculated_w = calculate_node_power_watts(idle_watts=node["idle_w"], rated_watts=node["rated_w"], cpu_percent=node["cpu"])
-        metric = Metric(
-            host_id=host.id,
-            timestamp=now,
-            received_at=now,
-            cpu_percent=node["cpu"],
-            ram_percent=node["ram"],
-            ram_used_bytes=int(node["total_ram"] * (node["ram"] / 100)),
-            disk_percent=node["disk"],
-            disk_used_bytes=int(node["total_disk"] * (node["disk"] / 100)),
-            net_recv_bytes_per_sec=node["net_rx"],
-            net_sent_bytes_per_sec=node["net_tx"],
-            uptime_seconds=86400 * 5,
-            calculated_power_watts=calculated_w,
-            cpu_temperature_celsius=node["temp_c"],
-        )
-        db.add(metric)
-
-    db.commit()
+    """
+    Instantly inject enterprise server nodes across Rack-01, Rack-02, and Rack-03,
+    and activate the live telemetry ticker loop (Feed A ~950W, Feed B ~820W, Total ~1,770W, PUE ~1.21).
+    """
+    provisioned = ensure_simulated_cluster(db)
+    simulation_engine.set_mode("normal")
+    tick_simulation_cycle(db)
 
     try:
         loop = asyncio.get_event_loop()
@@ -208,6 +40,7 @@ def trigger_cluster_simulation(db: Session = Depends(get_db)):
             loop.create_task(ws_manager.broadcast({
                 "event": "simulation_updated",
                 "action": "provision_cluster",
+                "mode": "normal",
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }))
     except Exception:
@@ -216,7 +49,7 @@ def trigger_cluster_simulation(db: Session = Depends(get_db)):
     return SimulationResult(
         status="success",
         action="provision_cluster",
-        message="Provisioned 5 enterprise cluster nodes across Rack-01, Rack-02, and Rack-03.",
+        message="Provisioned 5 enterprise cluster nodes (Feed A: ~950W, Feed B: ~820W, Total IT: ~1,770W, PUE: ~1.21). Live ticker active.",
     )
 
 
@@ -225,41 +58,18 @@ def trigger_stress_simulation(
     db: Session = Depends(get_db),
     _: None = Depends(simulation_rate_limiter),
 ):
-    """Spike cluster compute to 92% CPU, optimizing Dynamic PUE down to ~1.19"""
-    now = datetime.now(timezone.utc)
-    for node in SIMULATED_NODES:
-        host = db.query(Host).filter(Host.hostname == node["hostname"]).first()
-        if host:
-            host.last_seen = now
-            p_cfg = db.query(PowerConfig).filter(PowerConfig.host_id == host.id).first()
-            idle_w = p_cfg.idle_watts if p_cfg else 30.0
-            rated_w = p_cfg.rated_watts if p_cfg else 200.0
-            
-            calc_w = calculate_node_power_watts(idle_watts=idle_w, rated_watts=rated_w, cpu_percent=92.0)
-            metric = Metric(
-                host_id=host.id,
-                timestamp=now,
-                received_at=now,
-                cpu_percent=92.0,
-                ram_percent=88.0,
-                ram_used_bytes=int(node["total_ram"] * 0.88),
-                disk_percent=node["disk"],
-                disk_used_bytes=int(node["total_disk"] * (node["disk"] / 100)),
-                net_recv_bytes_per_sec=node["net_rx"] * 2.5,
-                net_sent_bytes_per_sec=node["net_tx"] * 3.0,
-                uptime_seconds=86400 * 5,
-                calculated_power_watts=calc_w,
-                cpu_temperature_celsius=round(node["temp_c"] + 14.5, 1),
-            )
-            db.add(metric)
-    db.commit()
+    """Spike cluster compute to 88-95% CPU, jumping total IT power to ~3,200W."""
+    simulation_engine.set_mode("stress")
+    tick_simulation_cycle(db)
 
+    now = datetime.now(timezone.utc)
     try:
         loop = asyncio.get_event_loop()
         if loop.is_running():
             loop.create_task(ws_manager.broadcast({
                 "event": "simulation_updated",
                 "action": "power_stress",
+                "mode": "stress",
                 "timestamp": now.isoformat(),
             }))
     except Exception:
@@ -268,7 +78,7 @@ def trigger_stress_simulation(
     return SimulationResult(
         status="success",
         action="power_stress",
-        message="Executed peak compute load scaling (92% CPU). Dynamic PUE optimized to ~1.19!",
+        message="Executed peak compute load scaling (90-95% CPU). IT load elevated with active thermal headroom tracking.",
     )
 
 
@@ -277,20 +87,18 @@ def trigger_outage_simulation(
     db: Session = Depends(get_db),
     _: None = Depends(simulation_rate_limiter),
 ):
-    """Simulate total single-feed outage assessment and verify N+1 safety margin"""
-    now = datetime.now(timezone.utc)
-    for node in SIMULATED_NODES:
-        host = db.query(Host).filter(Host.hostname == node["hostname"]).first()
-        if host:
-            host.last_seen = now
-    db.commit()
+    """Simulate total Feed A blackout: verify single-feed load shedding and dual-corded failover to Feed B."""
+    simulation_engine.set_mode("outage_feed_a")
+    tick_simulation_cycle(db)
 
+    now = datetime.now(timezone.utc)
     try:
         loop = asyncio.get_event_loop()
         if loop.is_running():
             loop.create_task(ws_manager.broadcast({
                 "event": "simulation_updated",
                 "action": "simulate_outage",
+                "mode": "outage_feed_a",
                 "timestamp": now.isoformat(),
             }))
     except Exception:
@@ -299,7 +107,7 @@ def trigger_outage_simulation(
     return SimulationResult(
         status="success",
         action="simulate_outage",
-        message="Simulated Feed A blackout: Surviving Feed B sustains 100% cluster load within NEC 80% limit.",
+        message="Simulated Feed A blackout: Feed A dropped to 0W while surviving Feed B sustains critical workloads.",
     )
 
 
@@ -308,11 +116,11 @@ def trigger_reset_simulation(
     db: Session = Depends(get_db),
     _: None = Depends(simulation_rate_limiter),
 ):
-    """Remove all simulated enterprise cluster nodes from database"""
-    simulated_names = [n["hostname"] for n in SIMULATED_NODES]
+    """Remove all simulated enterprise cluster nodes from database and restore clean production state."""
+    simulation_engine.set_mode("normal")
     deleted_count = 0
-    for name in simulated_names:
-        h = db.query(Host).filter(Host.hostname == name).first()
+    for host_id in SIMULATED_HOST_IDS:
+        h = db.query(Host).filter(Host.id == host_id).first()
         if h:
             try:
                 db.delete(h)
@@ -336,6 +144,5 @@ def trigger_reset_simulation(
     return SimulationResult(
         status="success",
         action="reset_simulation",
-        message=f"Removed {deleted_count} simulated nodes. Restored clean inventory state.",
+        message=f"Removed {deleted_count} simulated nodes. Restored clean production state.",
     )
-

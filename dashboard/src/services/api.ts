@@ -2,8 +2,9 @@ import { Host, Metric, FacilityOverview, CapacityForecast, FacilityPowerLog } fr
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/+$/, '');
 
-export async function fetchHosts(): Promise<Host[]> {
-  const res = await fetch(`${API_BASE}/hosts`);
+export async function fetchHosts(mode?: 'live' | 'sandbox'): Promise<Host[]> {
+  const url = mode ? `${API_BASE}/hosts?mode=${mode}` : `${API_BASE}/hosts`;
+  const res = await fetch(url);
   if (!res.ok) {
     throw new Error(`Failed to fetch hosts: ${res.statusText}`);
   }
@@ -18,8 +19,8 @@ export async function fetchHostMetrics(hostId: string, range: string = '1h'): Pr
   return res.json();
 }
 
-export async function fetchFacilityOverview(): Promise<FacilityOverview> {
-  const res = await fetch(`${API_BASE}/facility/overview`);
+export async function fetchFacilityOverview(includeSimulated: boolean = true): Promise<FacilityOverview> {
+  const res = await fetch(`${API_BASE}/facility/overview?include_simulated=${includeSimulated}`);
   if (!res.ok) {
     throw new Error(`Failed to fetch facility overview: ${res.statusText}`);
   }

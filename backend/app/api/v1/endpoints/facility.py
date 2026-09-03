@@ -1,6 +1,6 @@
 from typing import List
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
@@ -21,7 +21,10 @@ router = APIRouter()
 
 
 @router.get("/overview", response_model=FacilityOverviewResponse)
-def get_dcim_overview(db: Session = Depends(get_db)):
+def get_dcim_overview(
+    include_simulated: bool = Query(default=True, description="Include simulated cluster nodes in facility calculation"),
+    db: Session = Depends(get_db),
+):
     """
     Retrieve real-time Data Center Facility overview:
     - Dynamic PUE (Power Usage Effectiveness with fixed baseline overhead)
@@ -29,7 +32,7 @@ def get_dcim_overview(db: Session = Depends(get_db)):
     - Capacity Utilization against rated electrical infrastructure
     - Dual-Feed (A/B) N+1 Redundancy compliance with NEC 80% continuous derate check
     """
-    return get_facility_overview(db)
+    return get_facility_overview(db, include_simulated=include_simulated)
 
 
 @router.get("/forecast", response_model=CapacityForecastResponse)

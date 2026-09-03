@@ -8,6 +8,8 @@ interface HeaderProps {
   isRefreshing: boolean;
   isWsConnected?: boolean;
   activeAlertCount?: number;
+  dataMode?: 'live' | 'sandbox';
+  onToggleMode?: (mode: 'live' | 'sandbox') => void;
   onManualRefresh: () => void;
   onOpenSettings?: () => void;
   onOpenExport?: () => void;
@@ -20,6 +22,8 @@ export const Header: React.FC<HeaderProps> = ({
   isRefreshing,
   isWsConnected = false,
   activeAlertCount = 0,
+  dataMode = 'sandbox',
+  onToggleMode,
   onManualRefresh,
   onOpenSettings,
   onOpenExport,
@@ -88,6 +92,36 @@ export const Header: React.FC<HeaderProps> = ({
           </p>
         </div>
       </div>
+
+      {/* Environment Mode Toggle: Live Production vs Sim Lab */}
+      {onToggleMode && (
+        <div className="flex items-center bg-slate-900/90 border border-slate-800 p-1 rounded-xl shadow-inner font-mono text-xs">
+          <button
+            onClick={() => onToggleMode('live')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-all ${
+              dataMode === 'live'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm shadow-emerald-500/20'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+            title="Switch to Real Infrastructure (Only hosts transmitting agent metrics)"
+          >
+            <span className={`w-2 h-2 rounded-full ${dataMode === 'live' ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
+            <span>Live Production</span>
+          </button>
+          <button
+            onClick={() => onToggleMode('sandbox')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-all ${
+              dataMode === 'sandbox'
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm shadow-cyan-500/20'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+            title="Switch to Interactive Simulation Lab (Virtual 5-Node Enterprise DC)"
+          >
+            <span className={`w-2 h-2 rounded-full ${dataMode === 'sandbox' ? 'bg-cyan-400 animate-ping' : 'bg-slate-600'}`} />
+            <span>🎮 Sim Lab</span>
+          </button>
+        </div>
+      )}
 
       {/* Global Status, Actions & Auto-Refresh Bar */}
       <div className="flex items-center flex-wrap gap-2.5">

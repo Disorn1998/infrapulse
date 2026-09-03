@@ -48,7 +48,7 @@ def init_db() -> None:
         from app.models.pdu import PDU
         from app.models.alert import AlertConfig
 
-        # 1. Seed Singleton Facility Settings
+        # 1. Seed or Upgrade Singleton Facility Settings
         existing_facility = db.query(FacilitySettings).filter(FacilitySettings.id == 1).first()
         if not existing_facility:
             logger.info("Seeding default Facility Settings (Bangkok Edge DC - Zone A)...")
@@ -56,12 +56,18 @@ def init_db() -> None:
                 id=1,
                 facility_name="Bangkok Edge DC - Zone A",
                 total_power_capacity_watts=10000.0,  # 10 kW total electrical capacity
-                fixed_overhead_watts=250.0,          # 250 W baseline CRAC/UPS/lighting/switch power
-                cooling_overhead_factor=0.25,        # 25% variable cooling coefficient (k_c)
-                pdu_loss_factor=0.05,                # 5% variable PDU distribution loss (lambda_pdu)
+                fixed_overhead_watts=45.0,           # 45 W baseline Mini DC overhead (switch 25W + LED/controller 20W)
+                cooling_overhead_factor=0.15,        # 15% In-Row Precision Cooling coefficient (k_c)
+                pdu_loss_factor=0.03,                # 3% High-efficiency PDU distribution loss (lambda_pdu)
                 target_pue=1.30                      # BOI benchmark target PUE
             )
             db.add(default_facility)
+        else:
+            # Calibrate existing facility to modern Mini DC baseline
+            existing_facility.fixed_overhead_watts = 45.0
+            existing_facility.cooling_overhead_factor = 0.15
+            existing_facility.pdu_loss_factor = 0.03
+            existing_facility.target_pue = 1.30
 
         # 2. Seed Default Dual-Feed PDUs (Feed A & Feed B)
         pdu_count = db.query(PDU).count()

@@ -66,10 +66,10 @@ def calculate_node_power_watts(idle_watts: float, rated_watts: float, cpu_percen
     return round(dynamic_draw, 2)
 
 
-def get_facility_overview(db: Session) -> FacilityOverviewResponse:
+def get_facility_overview(db: Session, include_simulated: bool = True) -> FacilityOverviewResponse:
     """
     Aggregates active telemetry across all monitored nodes to produce real-time
-    Data Center Facility metrics, Dynamic PUE index (with fixed overhead),
+    Data Center Facility metrics, Dynamic PUE index (with fixed baseline overhead),
     and Dual-Feed (A/B) N+1 redundancy analysis.
     """
     # 1. Retrieve Singleton Facility Settings
@@ -77,9 +77,9 @@ def get_facility_overview(db: Session) -> FacilityOverviewResponse:
     if not facility:
         facility_name = "Bangkok Edge DC - Zone A"
         total_capacity_w = 10000.0
-        fixed_overhead_w = 250.0
-        cooling_factor = 0.25
-        pdu_loss = 0.05
+        fixed_overhead_w = 45.0
+        cooling_factor = 0.15
+        pdu_loss = 0.03
         target_pue = 1.30
     else:
         facility_name = facility.facility_name
@@ -90,7 +90,10 @@ def get_facility_overview(db: Session) -> FacilityOverviewResponse:
         target_pue = facility.target_pue
 
     # 2. Query hosts and identify active hosts (heartbeat within last 3 minutes)
-    all_hosts = db.query(Host).filter(Host.is_test == False).all()
+    query = db.query(Host)
+    if not include_simulated:
+        query = query.filter(Host.is_test == False)
+    all_hosts = query.all()
     total_hosts_count = len(all_hosts)
     cutoff_time = datetime.now(timezone.utc) - timedelta(minutes=3)
 

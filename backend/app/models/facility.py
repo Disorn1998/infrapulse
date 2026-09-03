@@ -16,10 +16,10 @@ class FacilitySettings(Base):
     # Power Infrastructure Capacity (Unified to Watts internally)
     total_power_capacity_watts = Column(Float, nullable=False, default=10000.0)  # 10 kW Main Breaker limit
     
-    # Fixed Baseline Overhead (Watts) — CRAC baseline fan power, room lighting, UPS idle losses, core switch
-    fixed_overhead_watts = Column(Float, nullable=False, default=35.0)
+    # Fixed Baseline Overhead (Watts) — Mini DC room scale (Core switch 25W + LED/controllers 20W)
+    fixed_overhead_watts = Column(Float, nullable=False, default=45.0)
     
-    # Variable Facility Overhead Multipliers
+    # Variable Facility Overhead Multipliers (In-Row Precision Cooling 15%, High Efficiency PDU 3%)
     cooling_overhead_factor = Column(Float, nullable=False, default=0.15)
     pdu_loss_factor = Column(Float, nullable=False, default=0.03)
     

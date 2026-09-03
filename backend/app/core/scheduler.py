@@ -10,8 +10,11 @@ import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 from app.core.config import settings
+from app.core.database import SessionLocal
+from app.core.websocket import ws_manager
 from app.models.metric import Metric
 from app.services.alert_service import run_alert_evaluation_cycle
+from app.services.simulation_service import tick_simulation_cycle
 
 logger = logging.getLogger("infrapulse.scheduler")
 
@@ -59,3 +62,34 @@ async def alert_evaluator_worker(interval_seconds: int = 30):
             logger.error(f"Error during alert evaluation background cycle: {e}", exc_info=True)
 
         await asyncio.sleep(interval_seconds)
+
+
+async def simulation_ticker_worker(interval_seconds: int = 10):
+    """
+    Continuous background loop keeping simulated enterprise cluster nodes online,
+    generating dynamic fluctuating telemetry, and maintaining realistic Feed A/Feed B power loads.
+    """
+    logger.info(f"Started InfraPulse Simulation Ticker Worker (interval: {interval_seconds}s)")
+    
+    # Wait 3s on boot before first tick cycle
+    await asyncio.sleep(3)
+
+    while True:
+        try:
+            db = SessionLocal()
+            try:
+                updated_count = tick_simulation_cycle(db)
+                if updated_count > 0:
+                    await ws_manager.broadcast({
+                        "event": "telemetry_update",
+                        "action": "simulation_tick",
+                        "updated_nodes": updated_count,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    })
+            finally:
+                db.close()
+        except Exception as e:
+            logger.error(f"Error during simulation ticker cycle: {e}", exc_info=True)
+
+        await asyncio.sleep(interval_seconds)
+

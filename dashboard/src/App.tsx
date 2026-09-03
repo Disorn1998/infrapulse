@@ -18,6 +18,7 @@ const REFRESH_INTERVAL_SECONDS = 15;
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'telemetry' | 'capacity' | 'alerts' | 'ai_advisor'>('telemetry');
+  const [dataMode, setDataMode] = useState<'live' | 'sandbox'>('sandbox');
   const [activeAlertCount, setActiveAlertCount] = useState<number>(0);
   const [hosts, setHosts] = useState<Host[]>([]);
   const [selectedHostId, setSelectedHostId] = useState<string | null>(null);
@@ -38,15 +39,16 @@ export const App: React.FC = () => {
 
   const [latestMetricsMap, setLatestMetricsMap] = useState<Record<string, Metric>>({});
 
-  const loadData = useCallback(async (background = false) => {
+  const loadData = useCallback(async (background = false, overrideMode?: 'live' | 'sandbox') => {
+    const currentMode = overrideMode !== undefined ? overrideMode : dataMode;
     if (!background) setIsLoading(true);
     setIsRefreshing(true);
     setError(null);
 
     try {
       const [fetchedHosts, fetchedFacility, fetchedAi, fetchedConfigs] = await Promise.all([
-        fetchHosts(),
-        fetchFacilityOverview().catch(() => null),
+        fetchHosts(currentMode),
+        fetchFacilityOverview(currentMode === 'sandbox').catch(() => null),
         fetchAiInsights().catch(() => null),
         fetchAlertConfigs().catch(() => []),
       ]);
@@ -236,6 +238,11 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleToggleMode = (newMode: 'live' | 'sandbox') => {
+    setDataMode(newMode);
+    loadData(false, newMode);
+  };
+
   const selectedHost = hosts.find((h) => h.id === selectedHostId);
 
   return (
@@ -246,6 +253,8 @@ export const App: React.FC = () => {
         isRefreshing={isRefreshing}
         isWsConnected={isWsConnected}
         activeAlertCount={activeAlertCount}
+        dataMode={dataMode}
+        onToggleMode={handleToggleMode}
         onManualRefresh={handleManualRefresh}
         onOpenSettings={() => setIsAlertModalOpen(true)}
         onOpenExport={() => setIsExportModalOpen(true)}
@@ -253,8 +262,10 @@ export const App: React.FC = () => {
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6 relative z-10">
-        {/* Interactive 1-Click Demo Control Bar */}
-        <DemoControlBar onSimulationComplete={handleManualRefresh} />
+        {/* Interactive 1-Click Demo Control Bar - ONLY in Sandbox Mode */}
+        {dataMode === 'sandbox' && (
+          <DemoControlBar onSimulationComplete={handleManualRefresh} />
+        )}
 
         {error && (
           <div className="bg-rose-950/60 border border-rose-500/40 rounded-2xl p-4 flex items-center gap-3 text-rose-300 font-mono text-xs shadow-lg shadow-rose-500/10">
