@@ -21,6 +21,7 @@ class Host(Base):
     agent_version = Column(String(50), nullable=True, default="1.0.0")
     status = Column(String(20), nullable=False, default="online")  # 'online', 'warning', 'critical', 'offline'
     is_test = Column(Boolean, nullable=False, default=False, server_default="false")
+    is_simulated = Column(Boolean, nullable=False, default=False, server_default="false")
     last_seen = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())

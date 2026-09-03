@@ -64,11 +64,11 @@ def list_hosts(
     """
     query = db.query(Host)
     if mode == "live":
-        query = query.filter(Host.is_test == False)
+        query = query.filter((Host.is_simulated == False) & (Host.is_test == False))
     elif mode == "sandbox":
-        query = query.filter(Host.is_test == True)
+        query = query.filter(Host.is_simulated == True)
     elif not include_test:
-        query = query.filter(Host.is_test == False)
+        query = query.filter((Host.is_simulated == False) & (Host.is_test == False))
     hosts = query.order_by(Host.hostname.asc()).all()
     return [enrich_host_status(h) for h in hosts]
 

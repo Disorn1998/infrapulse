@@ -18,7 +18,10 @@ const REFRESH_INTERVAL_SECONDS = 15;
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'telemetry' | 'capacity' | 'alerts' | 'ai_advisor'>('telemetry');
-  const [dataMode, setDataMode] = useState<'live' | 'sandbox'>('sandbox');
+  const [dataMode, setDataMode] = useState<'live' | 'sandbox'>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('mode') === 'live' ? 'live' : 'sandbox';
+  });
   const [activeAlertCount, setActiveAlertCount] = useState<number>(0);
   const [hosts, setHosts] = useState<Host[]>([]);
   const [selectedHostId, setSelectedHostId] = useState<string | null>(null);
@@ -240,6 +243,15 @@ export const App: React.FC = () => {
 
   const handleToggleMode = (newMode: 'live' | 'sandbox') => {
     setDataMode(newMode);
+    try {
+      const url = new URL(window.location.href);
+      if (newMode === 'live') {
+        url.searchParams.set('mode', 'live');
+      } else {
+        url.searchParams.delete('mode');
+      }
+      window.history.replaceState(null, '', url.toString());
+    } catch { /* ignore non-browser */ }
     loadData(false, newMode);
   };
 

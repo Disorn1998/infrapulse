@@ -182,6 +182,7 @@ def ensure_simulated_cluster(db: Session) -> int:
                 agent_version="1.0.0-sim",
                 status="online",
                 is_test=True,
+                is_simulated=True,
                 last_seen=now,
             )
             db.add(host)
@@ -189,6 +190,7 @@ def ensure_simulated_cluster(db: Session) -> int:
             provisioned_count += 1
         else:
             host.is_test = True
+            host.is_simulated = True
             host.status = "online"
             host.last_seen = now
 
@@ -246,6 +248,7 @@ def tick_simulation_cycle(db: Session) -> int:
         host.last_seen = now
         host.status = "online"
         host.is_test = True
+        host.is_simulated = True
 
         # Base CPU with realistic sine-wave breathing (period ~60s) + subtle noise
         phase_offset = hash(host.id) % 10

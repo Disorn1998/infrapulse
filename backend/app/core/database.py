@@ -41,6 +41,14 @@ def init_db() -> None:
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables created or verified successfully.")
 
+    # Migration check: ensure is_simulated column exists
+    from sqlalchemy import text
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE hosts ADD COLUMN IF NOT EXISTS is_simulated BOOLEAN DEFAULT FALSE;"))
+    except Exception as e:
+        logger.info(f"is_simulated column verification notice: {e}")
+
     # Seed initial configuration records
     db = SessionLocal()
     try:
