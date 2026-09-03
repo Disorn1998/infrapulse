@@ -53,22 +53,23 @@ def enrich_host_status(host: Host) -> dict:
 
 @router.get("", response_model=List[HostResponse])
 def list_hosts(
-    include_test: bool = Query(default=True, description="Include test nodes if true"),
+    include_simulated: bool = Query(default=False, description="Include simulated nodes if true (defaults to False for security)"),
     mode: Optional[str] = Query(default=None, description="'live' (physical agents only) | 'sandbox' (simulation only)"),
     db: Session = Depends(get_db),
 ):
     """
     List all monitored host nodes in the inventory.
     Filters by mode:
-    - 'live': Real physical/VM agents only (is_test == False)
-    - 'sandbox': Virtual simulated cluster nodes only (is_test == True)
+    - 'live': Real physical/VM agents only (is_simulated == False)
+    - 'sandbox': Virtual simulated cluster nodes only (is_simulated == True)
+    - None: Defaults to live safe view (is_simulated == False) unless include_simulated=True is explicitly passed.
     """
     query = db.query(Host)
     if mode == "live":
         query = query.filter(Host.is_simulated == False)
     elif mode == "sandbox":
         query = query.filter(Host.is_simulated == True)
-    elif not include_test:
+    elif not include_simulated:
         query = query.filter(Host.is_simulated == False)
     hosts = query.order_by(Host.hostname.asc()).all()
     return [enrich_host_status(h) for h in hosts]
