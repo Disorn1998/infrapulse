@@ -1,5 +1,5 @@
 # ⚡ คู่มือการใช้งานระบบ InfraPulse (InfraPulse User & Operations Manual)
-**ระบบมอนิเตอร์โครงสร้างพื้นฐานและบริหารจัดการความจุดาต้าเซ็นเตอร์ขนาดเล็ก (Mini Data Center Infrastructure & Capacity Management Platform - DCIM)**
+**ระบบมอนิเตอร์โครงสร้างพื้นฐาน บริหารความจุดาต้าเซ็นเตอร์ และแบบจำลองสถาปัตยกรรม 3D/2D (DCIM Platform)**
 
 ---
 
@@ -11,129 +11,83 @@
 2. **เครื่องมือมอนิเตอร์ทั่วไปมองไม่เห็นมิติด้านไฟฟ้าและความร้อน:** ซอฟต์แวร์ Sysadmin ทั่วไปอย่าง Prometheus, Grafana หรือ Netdata มอนิเตอร์ได้เฉพาะ CPU/RAM/Disk แต่ **ไม่รู้ว่าไฟตู้แร็คใกล้เต็มเบรกเกอร์หรือยัง ไม่รู้ประสิทธิภาพพลังงาน (PUE) และไม่มีผังความร้อนของตู้แร็ค (Thermal Heatmap)**
 3. **ความเสี่ยงเบรกเกอร์ทริปจากการขยายระบบ:** เมื่อซื้อเซิร์ฟเวอร์มาเพิ่ม หากเสียบปลั๊กโดยไม่รู้ความจุไฟฟ้าจริง อาจทำให้เบรกเกอร์หลักตัด และระบบไอทีล่มทั้งบริษัท
 4. **ความไม่แน่นอนของระบบไฟสำรอง (N+1 Failover):** มีรางไฟ 2 สาย (Feed A / Feed B) แต่ไม่เคยทดสอบคำนวณจริงว่าถ้า Feed ใด Feed หนึ่งดับกะทันหัน อีกฝั่งจะรับโหลดไหวไหม หรือจะตัดตามไปอีกตัว
+5. **ความยากในการอธิบายสถาปัตยกรรมดาต้าเซ็นเตอร์ให้ผู้บริหารหรือทีมเข้าใจ:** ผู้บริหารมักมองเห็นดาต้าเซ็นเตอร์เป็นเพียง "ห้องแอร์เย็นๆ ที่มีคอมพิวเตอร์ตั้งอยู่" โดยไม่เข้าใจความสัมพันธ์ระหว่างไฟฟ้า 2N, ระบบแอร์ In-Row, ระบบดับเพลิงแก๊สสะอาด และระบบกักลมเย็น
 
 ### 💡 เป้าหมายของ InfraPulse
 * **ผสาน IT Telemetry เข้ากับ DCIM:** รวมการเก็บข้อมูลเครื่องลูกข่ายเข้ากับการคำนวณฟิสิกส์ไฟฟ้าและความร้อนในแพลตฟอร์มเดียว
+* **แบบจำลองสถาปัตยกรรม 3D & 2D Room Zoning:** จำลองห้องดาต้าเซ็นเตอร์เต็มรูปแบบ 8 โซนหลักตามมาตรฐาน TIA-942 พร้อมภาพถ่ายฮาร์ดแวร์จริงระดับสตูดิโอ
 * **สอดคล้องกับมาตรฐานอุตสาหกรรม Data Center ไทย:** รองรับเกณฑ์ชี้วัด PUE ($\le 1.30$) ตามมาตรฐานส่งเสริมการลงทุน **BOI Data Center**
 * **ยึดตามมาตรฐานความปลอดภัยไฟฟ้าสากล:** ใช้เกณฑ์ **NEC 80% Continuous Load Derate** ในการประเมินโหลดเบรกเกอร์
-* **Zero-Licensing Cost:** ทำงานบน Open-Source Stack (FastAPI + PostgreSQL 16 + React TypeScript + Docker) ที่นำไปติดตั้งใช้งานได้ฟรีทันที
+* **Zero-Licensing Cost:** ทำงานบน Open-Source Stack (FastAPI + PostgreSQL 16 + React TypeScript + Three.js + Docker) ติดตั้งใช้งานได้ฟรีทันที
 * **AI Infrastructure Copilot:** มีระบบ AI วิเคราะห์สุขภาพห้องดาต้าเซ็นเตอร์ (DCIM Health Score 0-100) และให้คำแนะนำเชิงวิศวกรรมอัตโนมัติ
 
 ---
 
-## ⚙️ 2. สถาปัตยกรรมและหลักการทำงานของระบบ (How It Works)
+## 🏛️ 2. สถาปัตยกรรมศูนย์ข้อมูล 8 โซนหลัก (8 Core Facility Zones)
 
-InfraPulse ประกอบด้วยโมดูลวิศวกรรมหลักที่ทำงานร่วมกันแบบ Real-Time:
-
-```mermaid
-flowchart TD
-    subgraph Monitored_Nodes [Monitored Infrastructure Nodes]
-        U[Ubuntu Server / Node<br/>psutil Daemon + Temp]
-        W[Windows Desktop / Node<br/>psutil Task + Temp]
-    end
-
-    subgraph Client_Agent_Layer [Agent Core Engine]
-        U --> SAMP[Adaptive Metric Sampler + Temp °C]
-        W --> SAMP
-        SAMP --> NET_CHECK{Network Link<br/>Available?}
-        NET_CHECK -- No (Offline Outage) --> BUF[SQLite Circular Ring Buffer<br/>Cap: 1,000 Records]
-        NET_CHECK -- Yes (Online) --> FLUSH[Batch Ingest Buffer Flush]
-        FLUSH --> HTTP_TX[HTTP Client + X-Agent-Token]
-        BUF --> FLUSH
-    end
-
-    subgraph Backend_Gateway [FastAPI Core Engine - Port 8000]
-        HTTP_TX --> AUTH{Token Guard<br/>Timing-Safe Check}
-        AUTH -- Invalid Token --> REJ[401 Unauthorized]
-        AUTH -- Valid Token --> INGEST[Telemetry Ingestion]
-        INGEST --> DB[(PostgreSQL 16 Storage<br/>Indexed host_id + timestamp)]
-        
-        INGEST --> PWR_ENG[Dynamic Power Model]
-        PWR_ENG --> PUE_ENG[Dynamic PUE Calculator]
-        PWR_ENG --> RED_ENG[Dual-Feed N+1 Breaker Watchdog]
-        PWR_ENG --> CAP_ENG[Linear Regression Forecaster]
-        PWR_ENG --> RACK_ENG[Multi-Rack & Thermal Heatmap Engine]
-        PWR_ENG --> AI_ENG[AI Infrastructure Copilot]
-        
-        DB --> SCHED[Background Alert Scheduler]
-        SCHED --> ALERT_FSM[Alert Hysteresis State Machine<br/>15-Min Cooldown Suppression]
-        ALERT_FSM --> SMTP[Gmail SMTP Dispatcher]
-        SMTP --> MAIL[(Operator Inbox)]
-    end
-
-    subgraph Web_Dashboard [Single-Pane Ops Interface - Port 3000]
-        NGINX[Nginx Reverse Proxy] -->|Proxies /api/| INGEST
-        SPA[React 18 + Vite + Recharts] --> NGINX
-    end
-```
+| หมุด / Zone | ชื่อโซนสถาปัตยกรรม | อุปกรณ์ฮาร์ดแวร์จริงที่ติดตั้ง | วัตถุประสงค์และการทำงาน |
+| :---: | :--- | :--- | :--- |
+| **❶** | **SERVER RACK AREA** | ตู้ 42U APC NetShelter + Dell PowerEdge R750 | ติดตั้งเซิร์ฟเวอร์ สตอเรจ และอุปกรณ์ประมวลผลสำคัญขององค์กร |
+| **❷** | **UPS & BATTERY ROOM** | APC Symmetra PX 48kW Modular (True Online) | สำรองไฟฟ้า 0ms และกรองสัญญาณไฟ ป้องกันไฟตก-ไฟดับ |
+| **❸** | **PRECISION AIR CONDITIONING** | Schneider InRow RC 60kW & CRAH (EC Fans) | ควบคุมอุณหภูมิและความชื้น 24/7 พร้อมปรับรอบพัดลมอัตโนมัติ |
+| **❹** | **HOT AISLE / COLD AISLE** | EcoAisle Modular Containment Pod | กักแยกทางเดินลมเย็นและลมร้อนเด็ดขาด เพิ่มประสิทธิภาพแอร์ 35% |
+| **❺** | **FIRE SUPPRESSION SYSTEM** | ถังแก๊ส Novec 1230 แรงดัน 25 Bar + VESDA VLP | ดับเพลิงด้วยแก๊สสะอาด ไม่ใช้น้ำ ปลอดภัยต่อชิปและมนุษย์ |
+| **❻** | **MONITORING & DCIM** | InfraPulse DCIM & โต๊ะควบคุม NOC 6 จอมอนิเตอร์ | เฝ้าระวังไฟฟ้า อุณหภูมิ และเน็ตเวิร์กแบบ Real-Time ตลอด 24 ชม. |
+| **❼** | **NETWORK ROOM** | Cisco Nexus 9000 Spine-Leaf + ราง FiberGuide | ศูนย์กลางกระจายทราฟฟิกข้อมูลความเร็วสูง 100GbE / 400GbE |
+| **❽** | **ACCESS CONTROL & SECURITY** | ประตูหมุน Mantrap + สแกนชีวมิติ + กล้อง 4K CCTV | ป้องกันบุคคลภายนอกเข้าพื้นที่เซิร์ฟเวอร์ บันทึกประวัติตาม ISO 27001 |
 
 ---
 
-## 🚀 3. ขั้นตอนการติดตั้งและเริ่มใช้งาน (Quickstart Guide)
+## 🚀 3. วิธีการใช้งานระบบอย่างละเอียด (Step-by-Step User Guide)
 
-### 🖥️ ขั้นตอนที่ 1: ติดตั้ง Client Agent บนเครื่องแม่ข่าย/ลูกข่าย (1 คำสั่งจบ)
+### 3.1 การใช้งานหน้าแรกและการสำรวจสถาปัตยกรรม (Architecture Primer)
+1. เข้าใช้งานผ่านลิงก์ [https://infrapulse-0ft2.onrender.com/](https://infrapulse-0ft2.onrender.com/)
+2. **การสลับโหมด 3D และ 2D:**
+   * กดปุ่ม `[ 🎮 3D แบบจำลองเต็มห้อง ]` เพื่อสำรวจห้องศูนย์ข้อมูล 3 มิติ:
+     - คลิกลากเมาส์เพื่อหมุนกล้องดูรอบทิศทาง 360 องศา
+     - ใช้ปุ่มลัดมุมกล้อง: `[ ISO ROOM ]` (มุมมองภาพรวม), `[ RACKS ]` (เจาะลึกตู้เซิร์ฟเวอร์), `[ POWER ]` (เจาะลึกห้อง UPS), `[ TOP-DOWN ]` (มองจากเพดาน)
+     - กดปุ่มลูกศรหมุน `[ 🔄 ]` เพื่อเปิด/ปิดการหมุนอัตโนมัติ (ระบบจะหยุดหมุนทันทีที่แตะหน้าจอ)
+   * กดปุ่ม `[ 📐 2D ผังโซนห้อง & 8 อุปกรณ์ ]` เพื่อดูผังห้องทางสถาปัตยกรรม (Top-Down Blueprint) แบ่งสีตามฟังก์ชันงาน
+3. **การส่องดูภาพถ่ายจริงและสเปกวิศวกรรม (Hardware Inspector):**
+   * คลิกที่ **หมุดหมายเลข ❶ ถึง ❽** ในห้อง 3D หรือคลิกที่กล่องโซนในผัง 2D หรือคลิกการ์ดอุปกรณ์
+   * หน้าต่างโมดอลขนาดใหญ่จะปรากฏขึ้น **ตรงกลางจอภาพพอดี**:
+     - **ฝั่งซ้าย:** ภาพถ่ายจริงของฮาร์ดแวร์ระดับสตูดิโอ (กดปุ่ม `[ EXPAND ]` เพื่อดูรูปใหญ่เต็มจอ) พร้อมค่าวัดไฟฟ้าสด
+     - **ฝั่งขวา:** ตารางสเปกวิศวกรรม, บทบาทหน้าที่, ความสำคัญ, และการวิเคราะห์ผลกระทบหากอุปกรณ์เสียหาย
 
-#### บนระบบปฏิบัติการ Windows (รันผ่าน PowerShell):
-เปิด PowerShell แล้ววางคำสั่ง 1 บรรทัดนี้:
-```powershell
-irm https://raw.githubusercontent.com/Disorn1998/infrapulse/main/agent/install.ps1 | iex
-```
+### 3.2 การสลับโหมด Live Production vs Sim Lab Sandbox
+* **โหมด Live Production:** แสดงข้อมูลจริง 100% จากเซิร์ฟเวอร์ที่ติดตั้ง Agent หากยังไม่มีเครื่องเชื่อมต่อ จะแสดง Empty State พร้อมคำสั่งติดตั้ง
+* **โหมด Sim Lab Sandbox:** จำลองเซิร์ฟเวอร์ 5 เครื่อง พร้อมโหลดไฟ Feed A (~950W) และ Feed B (~820W) ให้ทดลองดูพฤติกรรมของระบบทันที
 
-#### บนระบบปฏิบัติการ Linux / Ubuntu:
-เปิด Terminal แล้ววางคำสั่ง 1 บรรทัดนี้:
+### 3.3 การอ่านค่าตัวชี้วัด DCIM (Capacity & Power View)
+* **PUE Index:** ประเมินว่าใช้ไฟคุ้มค่าหรือไม่ (เกณฑ์ BOI ไทย $\le 1.30$)
+* **N+1 Dual-Feed Redundancy:** ตรวจดูว่าหากสาย Feed A หรือ Feed B เส้นใดเส้นหนึ่งดับ อีกเส้นทางจะรับโหลดไหวหรือไม่ (ปลอดภัยตามเกณฑ์ NEC 80%)
+* **Multi-Rack Elevation:** สลับดูตู้แร็ค **`Rack-01`**, **`Rack-02`**, และ **`Rack-03`** เพื่อตรวจหาจุดความร้อนสะสม U1-U42
+
+---
+
+## 💻 4. ขั้นตอนการติดตั้ง Client Agent บนเครื่องจริง
+
+### สำหรับ Ubuntu / Debian Linux:
+เปิด Terminal แล้วรันคำสั่ง 1 บรรทัดนี้:
 ```bash
 curl -sSL https://raw.githubusercontent.com/Disorn1998/infrapulse/main/agent/install.sh | sudo bash
 ```
 
----
-
-## 🖥️ 4. วิธีการอ่านค่าและการใช้งาน Dashboard (How to Read & Use)
-
-ระบบถูกออกแบบมาให้แสดงผลเป็น 3 แท็บหลัก เพื่อครอบคลุมทั้งมิติทางด้านซอฟต์แวร์ (IT) และมิติทางด้านฮาร์ดแวร์/ไฟฟ้า (Facility)
-
-### 📊 แท็บ 1: Real-Time Telemetry (สถานะเซิร์ฟเวอร์แบบเรียลไทม์)
-หน้าต่างนี้ใช้สำหรับตรวจสอบสุขภาพของเซิร์ฟเวอร์แต่ละตัว (Node) แบบวินาทีต่อวินาที
-* **วิธีอ่านค่า Status:** เซิร์ฟเวอร์ที่ทำงานปกติจะขึ้น `🟢 Online` หากเน็ตหลุดหรือเครื่องดับจะเปลี่ยนเป็น `🔴 Offline`
-* **วิธีอ่านค่าความร้อน (Thermal Badge):** บนการ์ดเซิร์ฟเวอร์จะมีตัวเลข **🌡️ XX.X°C**
-  * 🟦 **สีฟ้า (< 45°C):** เครื่องเย็นมาก (Idle)
-  * 🟩 **สีเขียว (45-65°C):** อุณหภูมิทำงานปกติ (Optimal)
-  * 🟧 **สีส้ม (65-75°C):** อุณหภูมิค่อนข้างสูง ควรเริ่มจับตาดู
-  * 🟥 **สีแดง (> 75°C):** ร้อนเกินเกณฑ์ (Hotspot) เสี่ยงต่อการถูกลดความเร็ว (CPU Throttling)
-* **กราฟ Network (RX/TX):** เส้นสีเขียวคือข้อมูลที่รับเข้า (Download) เส้นสีส้มคือข้อมูลที่ส่งออก (Upload)
-
-### ⚡ แท็บ 2: Capacity & Power Intelligence (การบริหารจัดการระบบไฟฟ้าและพื้นที่)
-หน้าต่างนี้คือ **"หัวใจหลักของการเป็น DCIM"** ใช้ดูภาพรวมของทั้งห้อง Data Center
-* **วิธีอ่านค่า Dynamic PUE Index (ด้านบนสุด):**
-  * **PUE (Power Usage Effectiveness)** คือตัววัดความคุ้มค่าของการใช้ไฟ ยิ่งใกล้ `1.0` ยิ่งดี
-  * มาตรฐานที่ **BOI (บีโอไอ)** กำหนดให้สิทธิประโยชน์คือ **$\le 1.30$**
-  * *ข้อควรรู้:* ในช่วงที่เซิร์ฟเวอร์รันงานน้อย (Idle) ค่า PUE จะเด้งสูงขึ้น เพราะแอร์และระบบไฟพื้นฐาน (Fixed Overhead) ยังคงกินไฟเท่าเดิมถือเป็นเรื่องปกติ
-* **วิธีอ่านค่า N+1 Power Redundancy:**
-  * **HEALTHY:** หมายความว่าหากไฟตก 1 สาย (เช่น Feed A ดับ) สายไฟ Feed B ที่เหลืออยู่สามารถรับโหลดทั้งหมดของห้องได้โดยที่ **เบรกเกอร์ไม่ทริป** (ปลอดภัยตามกฎ NEC 80% Continuous Load)
-* **วิธีอ่านกราฟ Predictive Power Growth (พยากรณ์ไฟเต็ม):**
-  * กราฟจะพล็อตเส้นทแยงมุมเพื่อดูว่า "การใช้ไฟฟ้าของคุณโตขึ้นกี่ Watt ต่อวัน"
-  * **Days to Exhaustion:** AI จะคำนวณวันให้เลยว่า อีกกี่วันไฟจะเต็ม 100% (ช่วยให้คุณทำเรื่องขอเบิกงบขยายเฟสใหม่ได้ทันเวลา)
-* **วิธีใช้งาน Multi-Rack Thermal Heatmap:**
-  * กดปุ่มเลือกตู้แร็ค **`Rack-01`**, **`Rack-02`**, หรือ **`Rack-03`** เพื่อดูผังจำลอง
-  * ดูแถบสีช่อง U (U1 - U42) เพื่อตรวจสอบว่ามีเซิร์ฟเวอร์ติดตั้งอยู่ที่ช่องไหนบ้าง อาศัยไฟจาก Feed ไหน (A หรือ B) และมีความร้อนสะสมในช่องนั้นเท่าไหร่ 
-* **วิธีบันทึก Historical Monthly Audit:**
-  * กดปุ่ม **"+ Add Monthly Audit"** เพื่อกรอกบิลค่าไฟรายเดือน (หน่วย kWh) 
-  * ระบบจะนำมาคำนวณ PUE รายเดือนเก็บเป็นประวัติระยะยาว สำหรับใช้ยื่นขอมาตรฐาน ISO หรือ BOI
-
-### 🤖 แท็บ 3: AI Infrastructure Copilot (ผู้ช่วยวิเคราะห์ศูนย์ข้อมูล)
-ไม่ต้องตีความกราฟเอง ปล่อยให้ AI วิเคราะห์และสรุปให้!
-* **DCIM Health Score:** คะแนนสุขภาพรวมของห้อง Server (เต็ม 100)
-* **วิธีอ่าน Smart Insight Cards:**
-  * ระบบจะออกการ์ดแจ้งเตือน (CRITICAL, WARNING, INFO) ตามข้อมูลจริงที่เกิดขึ้น
-  * เช่น หากเสียบปลั๊กเซิร์ฟเวอร์เทไปที่ Feed A มากเกินไป AI จะบอกว่า *"A/B Dual-Feed Power Imbalance Detected"* พร้อมบอกให้ย้ายปลั๊กเพื่อรักษาสมดุล 50/50
-
-### ⚙️ แถบเมนูด้านบน (Header Controls)
-* **ปุ่ม ⚙️ Alert Rules:** ใช้สำหรับตั้งค่า "ขีดจำกัดแจ้งเตือน (Threshold)" แบบสไลด์บาร์ เมื่อ CPU, RAM, Disk หรือความร้อน ทะลุเกณฑ์ที่ตั้งไว้ ระบบจะส่ง Email แจ้งเตือนทันที (พร้อมระบบหน่วงเวลา 15 นาทีกันแจ้งเตือนสแปม)
-* **ปุ่ม 📑 Export Audit:** กดเพื่อดาวน์โหลดข้อมูลดิบของเซิร์ฟเวอร์ทั้งหมด, ค่าการกินไฟ, และประวัติ Audit แบบไฟล์ **.CSV** ออกไปเปิดใน Excel ทันที
+### สำหรับ Windows Server / Windows 10/11:
+เปิด PowerShell ด้วยสิทธิ์ Administrator แล้วรัน:
+```powershell
+irm https://raw.githubusercontent.com/Disorn1998/infrapulse/main/agent/install.ps1 | iex
+```
 
 ---
 
-## 🌐 5. ช่องทางการเข้าชมระบบออนไลน์ 24/7
+## ⚡ 5. การรันระบบด้วย Docker บนเครื่องตนเอง
 
-* **🚀 24/7 Cloud Production Dashboard:** [https://infrapulse-0ft2.onrender.com/](https://infrapulse-0ft2.onrender.com/)
-* **🌐 Cloudflare Tunnel Live Demo:** [https://membership-guarantee-forgotten-div.trycloudflare.com](https://membership-guarantee-forgotten-div.trycloudflare.com/)
-* **📚 Interactive OpenAPI/Swagger Docs:** [https://infrapulse-backend-fddp.onrender.com/docs](https://infrapulse-backend-fddp.onrender.com/docs)
+```bash
+git clone https://github.com/Disorn1998/infrapulse.git
+cd infrapulse
+docker compose up -d --build
+```
+เข้าใช้งานผ่าน:
+- หน้าเว็บแดชบอร์ด: `http://localhost:3000`
+- เอกสาร API Swagger: `http://localhost:8000/docs`

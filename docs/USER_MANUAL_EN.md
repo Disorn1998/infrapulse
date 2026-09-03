@@ -1,135 +1,93 @@
 # ⚡ InfraPulse User & Operations Manual
-**Mini Data Center Infrastructure & Capacity Management Platform (DCIM)**
+**Mini Data Center Infrastructure, Capacity Monitoring & 3D/2D Architectural DCIM Platform**
 
 ---
 
-## 🎯 1. Purpose & Motivation
+## 🎯 1. Mission & Engineering Motivation
 
 ### 📌 The Real-World Engineering Problem
-In enterprise branch offices, factories, hospitals, and edge computing sites (5–50 physical servers and network switches):
-1. **Commercial DCIM Software is Prohibitively Expensive:** Enterprise tools cost millions of Baht and demand proprietary sensor hardware.
-2. **Standard Monitoring Tools Lack Electrical & Thermal Awareness:** Prometheus, Grafana, and Netdata monitor CPU/RAM/Disk but **completely ignore rack breaker capacity, PUE efficiency, and thermal rack distribution**.
-3. **Risk of Catastrophic Breaker Trips:** Connecting new hardware without real-time electrical headroom checks can trigger main breaker trips.
-4. **Uncertainty in N+1 Electrical Redundancy:** Facilities have Dual Feeds (A/B) but cannot simulate whether a single-feed outage will cause cascading breaker overloads.
+Enterprise edge computing facilities, branch offices, industrial factories, and healthcare sites (housing 5 to 50 server blades and network switches) face significant operational hurdles:
+1. **Excessive Enterprise DCIM Licensing Costs:** Commercial platforms (Schneider EcoStruxure, Sunbird, Nlyte) demand millions in licensing fees and proprietary metering hardware.
+2. **Standard Monitoring Blind Spots:** Typical sysadmin suites (Prometheus, Grafana, Netdata) track operating system metrics (CPU/RAM/Disk) but completely ignore **PDU branch circuit loading, electrical phase balance, thermal heatmap distribution, and Power Usage Effectiveness (PUE)**.
+3. **Catastrophic Breaker Trips:** Scaling IT hardware without real-time physical electrical capacity checks risks tripping branch breakers, taking down critical operations.
+4. **Uncertain Dual-Feed N+1 Redundancy:** Facilities have dual A/B utility feeds, but rarely compute in real-time whether a sudden loss of Feed A will trip Feed B on continuous overload.
+5. **Architectural Communication Gap:** Non-technical executives often perceive data centers as mere "air-conditioned server closets" without understanding the vital synergy of 2N power, close-coupled in-row cooling, clean agent fire suppression, and cold aisle containment.
 
-### 💡 The Solution: InfraPulse
-* **Unifies IT Telemetry with Physical DCIM:** Gathers OS metrics and calculates real-time power physics and thermal index in a single interface.
-* **Thailand BOI Green Data Center Compliance:** Tracks dynamic PUE against the **PUE $\le 1.30$** tax incentive standard.
-* **International Electrical Safety:** Enforces **NEC 80% Continuous Load Derate** limits.
-* **Zero-Licensing Cost:** 100% open-source stack on FastAPI, PostgreSQL, React TypeScript, and Docker.
-* **AI Infrastructure Copilot:** Evaluates data center health score (0–100) and produces automated engineering recommendations.
-
----
-
-## ⚙️ 2. Architecture & Subsystems
-
-```mermaid
-flowchart TD
-    subgraph Monitored_Nodes [Monitored Infrastructure Nodes]
-        U[Ubuntu Server / Node<br/>psutil Daemon + Temp]
-        W[Windows Desktop / Node<br/>psutil Task + Temp]
-    end
-
-    subgraph Client_Agent_Layer [Agent Core Engine]
-        U --> SAMP[Adaptive Metric Sampler + Temp °C]
-        W --> SAMP
-        SAMP --> NET_CHECK{Network Link<br/>Available?}
-        NET_CHECK -- No (Offline Outage) --> BUF[SQLite Circular Ring Buffer<br/>Cap: 1,000 Records]
-        NET_CHECK -- Yes (Online) --> FLUSH[Batch Ingest Buffer Flush]
-        FLUSH --> HTTP_TX[HTTP Client + X-Agent-Token]
-        BUF --> FLUSH
-    end
-
-    subgraph Backend_Gateway [FastAPI Core Engine - Port 8000]
-        HTTP_TX --> AUTH{Token Guard<br/>Timing-Safe Check}
-        AUTH -- Invalid Token --> REJ[401 Unauthorized]
-        AUTH -- Valid Token --> INGEST[Telemetry Ingestion]
-        INGEST --> DB[(PostgreSQL 16 Storage<br/>Indexed host_id + timestamp)]
-        
-        INGEST --> PWR_ENG[Dynamic Power Model]
-        PWR_ENG --> PUE_ENG[Dynamic PUE Calculator]
-        PWR_ENG --> RED_ENG[Dual-Feed N+1 Breaker Watchdog]
-        PWR_ENG --> CAP_ENG[Linear Regression Forecaster]
-        PWR_ENG --> RACK_ENG[Multi-Rack & Thermal Heatmap Engine]
-        PWR_ENG --> AI_ENG[AI Infrastructure Copilot]
-        
-        DB --> SCHED[Background Alert Scheduler]
-        SCHED --> ALERT_FSM[Alert Hysteresis State Machine<br/>15-Min Cooldown Suppression]
-        ALERT_FSM --> SMTP[Gmail SMTP Dispatcher]
-        SMTP --> MAIL[(Operator Inbox)]
-    end
-
-    subgraph Web_Dashboard [Single-Pane Ops Interface - Port 3000]
-        NGINX[Nginx Reverse Proxy] -->|Proxies /api/| INGEST
-        SPA[React 18 + Vite + Recharts] --> NGINX
-    end
-```
+### 💡 The InfraPulse Solution
+* **Unifies IT Telemetry with Physical DCIM:** Combines agent host metrics with dynamic electrical and thermal physics modeling in a single pane of glass.
+* **8-Zone 3D/2D Architectural Showcase:** Fully interactive 360° WebGL room and TIA-942 Rated-3 Room Zoning blueprint paired with studio photographs of real enterprise hardware.
+* **Thailand BOI Green Data Center Compliance:** Tracks and validates the **PUE $\le 1.30$** energy efficiency benchmark.
+* **Electrical Safety Standards:** Evaluates continuous breaker capacity under the **NEC 80% continuous load rating rule**.
+* **Zero-Licensing Cost Stack:** Open-source FastAPI, PostgreSQL 16, React 18, Three.js, and Docker architecture ready for instant deployment.
+* **AI Infrastructure Copilot:** DCIM Health Score (0–100) engine offering proactive engineering diagnostics and actionable recommendations.
 
 ---
 
-## 🚀 3. Quickstart: 1-Line Universal Agent Installers
+## 🏛️ 2. The 8 Core Data Center Facility Zones
 
-### On Windows (PowerShell):
-Run PowerShell and execute:
-```powershell
-irm https://raw.githubusercontent.com/Disorn1998/infrapulse/main/agent/install.ps1 | iex
-```
+| Pin / Zone | Architecture Zone Name | Monitored Real Hardware Model | Facility Function & Role |
+| :---: | :--- | :--- | :--- |
+| **❶** | **SERVER RACK AREA** | 42U APC NetShelter SX + Dell PowerEdge R750 | Houses compute blades, high-density NVMe storage, and virtualization clusters. |
+| **❷** | **UPS & BATTERY ROOM** | APC Symmetra PX 48kW Modular (True Online) | Delivers instantaneous 0ms battery power during utility blackouts. |
+| **❸** | **PRECISION AIR CONDITIONING** | Schneider InRow RC 60kW & CRAH (EC Fans) | Controls temperature and humidity 24/7 with modulating variable-speed fans. |
+| **❹** | **HOT AISLE / COLD AISLE** | EcoAisle Modular Containment Pod | Decouples cold intake air from hot exhaust, boosting chiller efficiency by 35%. |
+| **❺** | **FIRE SUPPRESSION SYSTEM** | 3M Novec 1230 (25 Bar) + VESDA VLP Laser | Discharges residue-free clean gas within 10s without damaging microchips. |
+| **❻** | **MONITORING & DCIM** | InfraPulse DCIM & 6-Screen NOC Console Wall | Unified operational command center tracking power, thermal, and network metrics. |
+| **❼** | **NETWORK ROOM** | Cisco Nexus 9000 Spine-Leaf + FiberGuide | High-throughput non-blocking network fabric terminating telecom carriers. |
+| **❽** | **ACCESS CONTROL & SECURITY** | Airlock Mantrap + Biometrics + 4K AI CCTV | Enforces strict physical perimeter security and generates ISO 27001 audit logs. |
 
-#### For Linux / Ubuntu (via Terminal):
-Run the following 1-line command to install and start the background daemon:
+---
+
+## 🚀 3. Step-by-Step System Operations Guide
+
+### 3.1 Exploring the Data Center Architecture Showcase
+1. Open the platform at [https://infrapulse-0ft2.onrender.com/](https://infrapulse-0ft2.onrender.com/)
+2. **Toggling 3D vs 2D Architectural Views:**
+   * Click **`[ 🎮 3D Facility Room ]`** to enter the 360° interactive WebGL room:
+     - Drag with your mouse or finger to orbit around the room.
+     - Use camera preset shortcuts: `[ ISO ROOM ]`, `[ RACKS ]`, `[ POWER ]`, and `[ TOP-DOWN ]`.
+     - Toggle auto-rotation via `[ 🔄 ]` (auto-pauses immediately upon pointer interaction).
+   * Click **`[ 📐 2D Room Zoning ]`** to inspect the TIA-942 color-coded architectural floorplan and 8 detail cards.
+3. **Inspecting Real Hardware & Engineering Specifications:**
+   * Click any **numbered pin ❶ to ❽** in 3D or any equipment card in 2D.
+   * A large, symmetrical dialog modal appears **dead-center on the screen**:
+     - **Left Column:** High-resolution real studio photograph, full-screen `[ EXPAND ]` lightbox, and live electrical telemetry.
+     - **Right Column:** Detailed engineering specifications table, facility role, importance analysis, and failure impact evaluation.
+
+### 3.2 Live Production vs Sim Lab Sandbox
+* **Live Production Mode:** Dedicated exclusively to genuine production servers with verified authentication tokens. Unmonitored states display an onboarding empty state with 1-line installation scripts.
+* **Sim Lab Sandbox Mode:** Immediately launches a realistic 5-node cluster with active fluctuating electrical loads across Feed A (~950W) and Feed B (~820W).
+
+### 3.3 Interpreting DCIM Metrics & Capacity Views
+* **Dynamic PUE Index:** Measures power efficiency against the Thailand BOI target ($\le 1.30$).
+* **N+1 Dual-Feed Redundancy:** Verifies whether surviving Feed A or Feed B can safely absorb 100% of the facility load under the NEC 80% continuous rating rule.
+* **Multi-Rack Elevation:** Switch between `Rack-01`, `Rack-02`, and `Rack-03` to inspect vertical U-slot utilization and color-coded thermal badges.
+
+---
+
+## 💻 4. Client Agent Installation Guide
+
+### For Ubuntu / Debian Linux:
+Run this 1-line command in your terminal:
 ```bash
 curl -sSL https://raw.githubusercontent.com/Disorn1998/infrapulse/main/agent/install.sh | sudo bash
 ```
 
----
-
-## 🖥️ 4. How to Read Metrics & Dashboard Usage
-
-The dashboard is structured into 3 main tabs, covering both Software (IT) and Hardware/Electrical (Facility) dimensions.
-
-### 📊 Tab 1: Real-Time Telemetry (Live Server Status)
-This interface provides per-second health monitoring of individual server nodes.
-* **How to Read Status:** Healthy servers show `🟢 Online`. If network or power is lost, it changes to `🔴 Offline`.
-* **How to Read Thermal Badges:** Each node card features a **🌡️ XX.X°C** indicator:
-  * 🟦 **Cyan (< 45°C):** Cool (Idle workload).
-  * 🟩 **Green (45-65°C):** Optimal operating temperature.
-  * 🟧 **Amber (65-75°C):** Elevated temperature; monitor for airflow issues.
-  * 🟥 **Red (> 75°C):** Thermal Hotspot; high risk of CPU thermal throttling.
-* **Network Chart (RX/TX):** The green line represents RX (incoming/download) and the orange line represents TX (outgoing/upload) throughput.
-
-### ⚡ Tab 2: Capacity & Power Intelligence (DCIM Core)
-This is the core facility management tab for monitoring the entire Data Center room.
-* **How to Read Dynamic PUE Index (Top left):**
-  * **PUE (Power Usage Effectiveness)** measures electrical efficiency. Closer to `1.0` is better.
-  * The **Thailand BOI** standard for green data center tax incentives is **$\le 1.30$**.
-  * *Note:* During low IT workload (idle) periods, PUE will naturally spike higher because fixed facility overhead (cooling, lighting) remains constant while IT power drops.
-* **How to Read N+1 Power Redundancy:**
-  * **HEALTHY:** Means if one power feed (e.g., Feed A) fails, the surviving Feed B can safely carry the entire room's load without tripping the breaker (safe under the NEC 80% continuous load rule).
-* **How to Read Predictive Power Growth (Capacity Runout):**
-  * The chart plots a Linear Regression slope (Watts per day) based on historical usage.
-  * **Days to Exhaustion:** The AI automatically projects how many days until the 100% breaker capacity is hit, allowing you to plan phase expansions and budget approvals proactively.
-* **How to use Multi-Rack Thermal Heatmap:**
-  * Click to switch between **`Rack-01`**, **`Rack-02`**, or **`Rack-03`**.
-  * Look at the U-slots (U1 - U42) to see where servers are physically installed, which PDU Feed they draw from (A or B), and visually identify thermal hotspots in the rack via color-coded badges.
-* **How to record Historical Monthly Audits:**
-  * Click **"+ Add Monthly Audit"** to log your monthly utility bill (kWh) and IT equipment kWh.
-  * The system calculates and securely stores the monthly PUE history in PostgreSQL, generating long-term compliance reports for ISO or BOI audits.
-
-### 🤖 Tab 3: AI Infrastructure Copilot
-Stop manually interpreting charts—let the AI summarize the facility health!
-* **DCIM Health Score (0-100):** The overall health grade of your data center.
-* **How to Read Smart Insight Cards:**
-  * The AI Engine generates dynamic, real-time alerts (CRITICAL, WARNING, INFO) based on the database telemetry.
-  * *Example:* If too many servers are plugged into Feed A, the AI detects the load delta and issues an *"A/B Dual-Feed Power Imbalance"* warning, recommending you migrate plugs to Feed B to restore 50/50 balance.
-
-### ⚙️ Header Controls (Alerts & Exports)
-* **⚙️ Alert Rules:** Click the gear icon to adjust threshold sliders for CPU, RAM, Disk, and Temperature. If a threshold is breached, the system sends an automated Email Notification (with a 15-minute debounce to prevent spam).
-* **📑 Export Audit:** Click the spreadsheet icon to instantly download a **.CSV** containing your raw server inventory, power telemetry, and monthly PUE audits for Excel reporting.
+### For Windows Server / Windows 10/11:
+Open an Administrator PowerShell terminal and execute:
+```powershell
+irm https://raw.githubusercontent.com/Disorn1998/infrapulse/main/agent/install.ps1 | iex
+```
 
 ---
 
-## 🌐 5. Online Access & Live URLs
+## ⚡ 5. Local Docker Deployment (Zero Configuration)
 
-* **🚀 24/7 Cloud Production Dashboard:** [https://infrapulse-0ft2.onrender.com/](https://infrapulse-0ft2.onrender.com/)
-* **🌐 Cloudflare Tunnel Live Demo:** [https://membership-guarantee-forgotten-div.trycloudflare.com](https://membership-guarantee-forgotten-div.trycloudflare.com/)
-* **📚 Interactive OpenAPI/Swagger Docs:** [https://infrapulse-backend-fddp.onrender.com/docs](https://infrapulse-backend-fddp.onrender.com/docs)
+```bash
+git clone https://github.com/Disorn1998/infrapulse.git
+cd infrapulse
+docker compose up -d --build
+```
+Access endpoints:
+- Web Dashboard & 3D Primer: `http://localhost:3000`
+- Interactive API Swagger: `http://localhost:8000/docs`
