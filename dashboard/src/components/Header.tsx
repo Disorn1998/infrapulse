@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefreshCw, Server, Settings, FileSpreadsheet } from 'lucide-react';
+import { RefreshCw, Server, Settings, FileSpreadsheet, Bell } from 'lucide-react';
 import { FacilityOverview } from '../types/api';
 
 interface HeaderProps {
@@ -7,9 +7,11 @@ interface HeaderProps {
   countdown: number;
   isRefreshing: boolean;
   isWsConnected?: boolean;
+  activeAlertCount?: number;
   onManualRefresh: () => void;
   onOpenSettings?: () => void;
   onOpenExport?: () => void;
+  onNavigateAlerts?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -17,9 +19,11 @@ export const Header: React.FC<HeaderProps> = ({
   countdown,
   isRefreshing,
   isWsConnected = false,
+  activeAlertCount = 0,
   onManualRefresh,
   onOpenSettings,
   onOpenExport,
+  onNavigateAlerts,
 }) => {
   const isStandby = !facility || facility.total_it_power_watts === 0;
 
@@ -88,6 +92,28 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Global Status, Actions & Auto-Refresh Bar */}
       <div className="flex items-center flex-wrap gap-2.5">
         {getPueBadge()}
+
+        {/* Active Incident Alert Bell */}
+        <button
+          onClick={onNavigateAlerts || onOpenSettings}
+          className={`relative p-2 rounded-lg border transition-all ${
+            activeAlertCount > 0
+              ? 'bg-rose-500/10 border-rose-500/40 text-rose-400 shadow-sm shadow-rose-500/20 animate-pulse'
+              : 'bg-slate-900 border-surface-border text-slate-400 hover:text-cyan-400'
+          }`}
+          title={
+            activeAlertCount > 0
+              ? `${activeAlertCount} active threshold breach rules firing`
+              : 'Alert Command Center (All normal)'
+          }
+        >
+          <Bell className="w-4 h-4" />
+          {activeAlertCount > 0 && (
+            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-rose-500 text-slate-950 font-bold font-mono text-[10px] rounded-full flex items-center justify-center shadow-lg">
+              {activeAlertCount}
+            </span>
+          )}
+        </button>
 
         {/* 1-Click Export DCIM Report */}
         {onOpenExport && (

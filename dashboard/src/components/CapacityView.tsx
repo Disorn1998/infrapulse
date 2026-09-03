@@ -39,9 +39,10 @@ interface CapacityViewProps {
   hosts?: Host[];
   onOpenExport?: () => void;
   onRefresh?: () => void;
+  onFocusHost?: (hostId: string) => void;
 }
 
-export const CapacityView: React.FC<CapacityViewProps> = ({ onOpenExport }) => {
+export const CapacityView: React.FC<CapacityViewProps> = ({ onOpenExport, onFocusHost }) => {
   const [forecast, setForecast] = useState<CapacityForecast | null>(null);
   const [powerLogs, setPowerLogs] = useState<FacilityPowerLog[]>([]);
   const [racks, setRacks] = useState<RackSummary[]>([]);
@@ -346,7 +347,9 @@ export const CapacityView: React.FC<CapacityViewProps> = ({ onOpenExport }) => {
                 return (
                   <div
                     key={h.host_id}
-                    className="bg-surface-card border border-slate-700/80 rounded-lg px-2.5 py-1.5 flex items-center justify-between hover:border-cyan-500/50 transition-all hover:bg-slate-900 group"
+                    onClick={() => onFocusHost && onFocusHost(h.host_id)}
+                    className="bg-surface-card border border-slate-700/80 rounded-lg px-2.5 py-1.5 flex items-center justify-between hover:border-cyan-500 hover:shadow-glow-cyan transition-all hover:bg-slate-900 group cursor-pointer"
+                    title={`Click to inspect live telemetry for ${h.hostname}`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-slate-500 font-bold text-[10px]">
@@ -357,7 +360,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({ onOpenExport }) => {
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                         <span className="w-1 h-1 rounded-full bg-cyan-400" />
                       </div>
-                      <span className="text-slate-200 font-bold truncate text-[11px]">{h.hostname}</span>
+                      <span className="text-slate-200 group-hover:text-cyan-400 transition-colors font-bold truncate text-[11px]">{h.hostname}</span>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">

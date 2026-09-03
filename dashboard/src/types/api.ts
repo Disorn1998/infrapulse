@@ -206,3 +206,32 @@ export interface AlertSettingsSummary {
   temp_threshold: number;
   recipient_email: string;
 }
+
+export interface AlertConfig {
+  id: string;
+  host_id?: string | null;
+  metric_name: string;
+  operator: string;
+  threshold_value: number;
+  recipient_email: string;
+  cooldown_minutes: number;
+  is_active: boolean;
+  current_state: 'OK' | 'PENDING' | 'FIRING' | string;
+  consecutive_breaches: number;
+  state_changed_at?: string | null;
+  last_notified_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AlertHistoryItem {
+  id: string;
+  alert_config_id?: string | null;
+  host_id?: string | null;
+  metric_name: string;
+  triggered_value?: number | null;
+  threshold_value?: number | null;
+  message: string;
+  status: 'SENT' | 'FAILED' | 'ACKNOWLEDGED' | string;
+  sent_at: string;
+}

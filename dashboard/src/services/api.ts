@@ -160,6 +160,49 @@ export async function updateAlertRulesSummary(payload: import('../types/api').Al
   return res.json();
 }
 
+export async function fetchAlertConfigs(hostId?: string): Promise<import('../types/api').AlertConfig[]> {
+  const url = hostId
+    ? `${API_BASE}/alerts/configs?host_id=${encodeURIComponent(hostId)}`
+    : `${API_BASE}/alerts/configs`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch alert configs: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function fetchAlertHistory(hostId?: string, limit = 100): Promise<import('../types/api').AlertHistoryItem[]> {
+  const query = new URLSearchParams();
+  if (hostId) query.set('host_id', hostId);
+  query.set('limit', String(limit));
+  const res = await fetch(`${API_BASE}/alerts/history?${query.toString()}`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch alert history: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function triggerImmediateAlertEvaluation(): Promise<{ evaluated_rules_count: number; triggered_count: number }> {
+  const res = await fetch(`${API_BASE}/alerts/evaluate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!res.ok) {
+    throw new Error(`Immediate evaluation cycle failed: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function sendTestAlertEmail(recipientEmail: string): Promise<{ status: string; delivered: boolean }> {
+  const res = await fetch(`${API_BASE}/alerts/test?recipient_email=${encodeURIComponent(recipientEmail)}`, {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to send test alert email: ${res.statusText}`);
+  }
+  return res.json();
+}
+
 export function getExportCsvUrl(): string {
   return `${API_BASE}/facility/export/audit-csv`;
 }

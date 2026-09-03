@@ -1,5 +1,5 @@
 import React from 'react';
-import { Server, Monitor, Trash2, Zap } from 'lucide-react';
+import { Server, Monitor, Trash2, Zap, ArrowDown, ArrowUp } from 'lucide-react';
 import { Host, Metric } from '../types/api';
 import { formatLastSeen } from '../services/api';
 import { CircularGauge } from './ui/CircularGauge';
@@ -28,6 +28,15 @@ export const HostCard: React.FC<HostCardProps> = ({
   const diskPct = latestMetric?.disk_percent ?? 0;
   const tempC = latestMetric?.cpu_temperature_celsius;
   const powerW = latestMetric?.calculated_power_watts ?? host.power_config?.idle_watts ?? 0;
+  const netIn = latestMetric?.net_recv_bytes_per_sec;
+  const netOut = latestMetric?.net_sent_bytes_per_sec;
+
+  const formatBandwidth = (bytesPerSec?: number | null) => {
+    if (bytesPerSec == null || isNaN(bytesPerSec) || bytesPerSec <= 0) return '0 B/s';
+    if (bytesPerSec >= 1024 * 1024) return `${(bytesPerSec / (1024 * 1024)).toFixed(1)} MB/s`;
+    if (bytesPerSec >= 1024) return `${(bytesPerSec / 1024).toFixed(0)} KB/s`;
+    return `${Math.round(bytesPerSec)} B/s`;
+  };
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -165,6 +174,21 @@ export const HostCard: React.FC<HostCardProps> = ({
           strokeWidth={4.5}
           colorScheme={diskPct > 85 ? 'rose' : diskPct > 75 ? 'amber' : 'emerald'}
         />
+      </div>
+
+      {/* Network I/O Bandwidth Live Strip */}
+      <div className="mt-2.5 flex items-center justify-between text-[10px] font-mono px-2.5 py-1.5 bg-slate-950/60 rounded-xl border border-slate-800/80">
+        <div className="flex items-center gap-1.5">
+          <ArrowDown className="w-3 h-3 text-cyan-400 shrink-0" />
+          <span className="text-slate-500">RX:</span>
+          <span className="text-slate-300 font-semibold">{formatBandwidth(netIn)}</span>
+        </div>
+        <div className="text-slate-700 font-extrabold">•</div>
+        <div className="flex items-center gap-1.5">
+          <ArrowUp className="w-3 h-3 text-emerald-400 shrink-0" />
+          <span className="text-slate-500">TX:</span>
+          <span className="text-slate-300 font-semibold">{formatBandwidth(netOut)}</span>
+        </div>
       </div>
     </div>
   );

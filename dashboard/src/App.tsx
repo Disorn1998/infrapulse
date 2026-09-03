@@ -9,14 +9,16 @@ import { DemoControlBar } from './components/DemoControlBar';
 import { EmptyState } from './components/EmptyState';
 import { AlertSettingsModal } from './components/AlertSettingsModal';
 import { ExportReportModal } from './components/ExportReportModal';
+import { AlertsView } from './components/AlertsView';
 import { Host, Metric, FacilityOverview, AiAdvisorResponse } from './types/api';
-import { fetchHosts, fetchHostMetrics, fetchFacilityOverview, fetchAiInsights, deleteHost, getWebSocketUrl } from './services/api';
-import { Server, AlertCircle, Activity, Zap, Bot } from 'lucide-react';
+import { fetchHosts, fetchHostMetrics, fetchFacilityOverview, fetchAiInsights, fetchAlertConfigs, deleteHost, getWebSocketUrl } from './services/api';
+import { Server, AlertCircle, Activity, Zap, Bot, ShieldAlert } from 'lucide-react';
 
 const REFRESH_INTERVAL_SECONDS = 15;
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'telemetry' | 'capacity' | 'ai_advisor'>('telemetry');
+  const [activeTab, setActiveTab] = useState<'telemetry' | 'capacity' | 'alerts' | 'ai_advisor'>('telemetry');
+  const [activeAlertCount, setActiveAlertCount] = useState<number>(0);
   const [hosts, setHosts] = useState<Host[]>([]);
   const [selectedHostId, setSelectedHostId] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<Metric[]>([]);
@@ -42,15 +44,20 @@ export const App: React.FC = () => {
     setError(null);
 
     try {
-      const [fetchedHosts, fetchedFacility, fetchedAi] = await Promise.all([
+      const [fetchedHosts, fetchedFacility, fetchedAi, fetchedConfigs] = await Promise.all([
         fetchHosts(),
         fetchFacilityOverview().catch(() => null),
         fetchAiInsights().catch(() => null),
+        fetchAlertConfigs().catch(() => []),
       ]);
 
       setHosts(fetchedHosts);
       setFacility(fetchedFacility);
       if (fetchedAi) setAiData(fetchedAi);
+      if (fetchedConfigs && Array.isArray(fetchedConfigs)) {
+        const firingCount = fetchedConfigs.filter((c) => c.current_state === 'FIRING').length;
+        setActiveAlertCount(firingCount);
+      }
 
       if (fetchedHosts.length > 0) {
         setSelectedHostId((prev) => (prev && fetchedHosts.some((h) => h.id === prev) ? prev : fetchedHosts[0].id));
@@ -238,9 +245,11 @@ export const App: React.FC = () => {
         countdown={countdown}
         isRefreshing={isRefreshing}
         isWsConnected={isWsConnected}
+        activeAlertCount={activeAlertCount}
         onManualRefresh={handleManualRefresh}
         onOpenSettings={() => setIsAlertModalOpen(true)}
         onOpenExport={() => setIsExportModalOpen(true)}
+        onNavigateAlerts={() => setActiveTab('alerts')}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6 relative z-10">
@@ -288,6 +297,27 @@ export const App: React.FC = () => {
           >
             <Zap className="w-4 h-4" />
             <span>Capacity & Power Intelligence</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('alerts')}
+            className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all ${
+              activeTab === 'alerts'
+                ? 'bg-rose-500 text-slate-950 shadow-lg shadow-rose-500/25 ring-1 ring-rose-300'
+                : 'bg-surface-card hover:bg-slate-800 text-slate-400 hover:text-rose-300 border border-surface-border'
+            }`}
+          >
+            <ShieldAlert className="w-4 h-4 text-rose-400" />
+            <span>Incident & Alert Center</span>
+            {activeAlertCount > 0 ? (
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-rose-950 text-rose-300 border border-rose-500/50 animate-pulse">
+                {activeAlertCount} FIRING
+              </span>
+            ) : (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-slate-900 text-emerald-400">
+                OK
+              </span>
+            )}
           </button>
 
           <button
@@ -359,10 +389,21 @@ export const App: React.FC = () => {
             hosts={hosts}
             onOpenExport={() => setIsExportModalOpen(true)}
             onRefresh={handleManualRefresh}
+            onFocusHost={(hostId) => {
+              setSelectedHostId(hostId);
+              setActiveTab('telemetry');
+            }}
           />
         )}
 
-        {/* Tab 3: AI Infrastructure Copilot */}
+        {/* Tab 3: Incident & Alert Center */}
+        {activeTab === 'alerts' && (
+          <AlertsView
+            onOpenSettings={() => setIsAlertModalOpen(true)}
+          />
+        )}
+
+        {/* Tab 4: AI Infrastructure Copilot */}
         {activeTab === 'ai_advisor' && (
           <AiAdvisorWidget
             data={aiData}
